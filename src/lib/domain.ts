@@ -1,0 +1,125 @@
+import { z } from "zod";
+
+// ---------------------------------------------------------------------------
+// Vocabulary. Keys are stored in the database; labels live in the dictionaries.
+// ---------------------------------------------------------------------------
+
+/** What is wrong, described as a problem (not a solution). */
+export const PROBLEM_KEYS = [
+  "crossing", // hard or unsafe to cross the road
+  "sidewalk", // broken, missing or blocked sidewalk
+  "access", // not usable with a stroller, wheelchair or walker
+  "shade", // no shade or seating
+  "lighting", // poorly lit, feels unsafe
+  "green", // neglected green space or play area
+  "traffic", // speeding, parking or traffic conflicts
+  "other",
+] as const;
+export type ProblemKey = (typeof PROBLEM_KEYS)[number];
+
+/** Optional: a fix the reporter already has in mind. */
+export const FIX_KEYS = [
+  "pedestrian_crossing",
+  "pedestrian_bridge",
+  "ramp",
+  "sidewalk_repair",
+  "shade_structure",
+  "lighting",
+  "seating",
+  "planting",
+  "traffic_calming",
+  "other",
+] as const;
+export type FixKey = (typeof FIX_KEYS)[number];
+
+export const STATUSES = [
+  "pending_review", // submitted, waiting for a moderator
+  "open_for_signatures",
+  "open_for_design",
+  "sponsorship",
+  "submitted_to_authority",
+  "in_progress",
+  "completed",
+  "rejected",
+] as const;
+export type ProjectStatus = (typeof STATUSES)[number];
+
+// ---------------------------------------------------------------------------
+// Geography. Reports must be inside Kuwait (rough bounding box).
+// ---------------------------------------------------------------------------
+
+export const KUWAIT_BOUNDS = {
+  west: 46.55,
+  south: 28.52,
+  east: 48.45,
+  north: 30.1,
+} as const;
+
+/** Salmiya: the pilot area and the map's starting point. */
+export const DEFAULT_CENTER = { lat: 29.3345, lng: 48.0765 } as const;
+
+// ---------------------------------------------------------------------------
+// Signatures
+// ---------------------------------------------------------------------------
+
+/** Signatures a project needs before it can be raised with an authority. */
+export const SIGNATURE_TARGET = 100;
+export const OTP_LENGTH = 6;
+
+/**
+ * Kuwaiti mobile numbers: 8 digits starting with 5, 6 or 9, optionally typed
+ * with +965 / 00965 / 965. Returns "+965XXXXXXXX", or null if invalid.
+ */
+export function normalizeKuwaitPhone(input: string): string | null {
+  // Arabic-Indic digits (٠-٩) are common on Arabic keyboards.
+  const ascii = input.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660));
+  let digits = ascii.replace(/\D/g, "");
+  if (digits.startsWith("00965")) digits = digits.slice(5);
+  else if (digits.startsWith("965") && digits.length === 11) digits = digits.slice(3);
+  return /^[569]\d{7}$/.test(digits) ? `+965${digits}` : null;
+}
+
+// ---------------------------------------------------------------------------
+// Photos
+// ---------------------------------------------------------------------------
+
+export const MAX_PHOTOS = 4;
+export const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
+export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
+// ---------------------------------------------------------------------------
+// Report payload (shared by the browser form and the API route)
+// ---------------------------------------------------------------------------
+
+export const reportSchema = z.object({
+  lat: z.coerce.number().min(KUWAIT_BOUNDS.south).max(KUWAIT_BOUNDS.north),
+  lng: z.coerce.number().min(KUWAIT_BOUNDS.west).max(KUWAIT_BOUNDS.east),
+  problem: z.enum(PROBLEM_KEYS),
+  fix: z.enum(FIX_KEYS).optional(),
+  title: z.string().trim().min(5).max(120),
+  description: z.string().trim().min(10).max(2000),
+});
+export type ReportInput = z.infer<typeof reportSchema>;
+
+// ---------------------------------------------------------------------------
+// Stored project
+// ---------------------------------------------------------------------------
+
+export type Project = {
+  id: string;
+  /** Short public code printed on plaques and used in share links, e.g. P-0042. */
+  code: string;
+  status: ProjectStatus;
+  problem: ProblemKey;
+  fix: FixKey | null;
+  title: string;
+  description: string;
+  lat: number;
+  lng: number;
+  /** Photo ids; resolve to URLs with photoUrl(). */
+  photos: string[];
+  createdAt: string;
+};
+
+export const photoUrl = (id: string) => `/api/uploads/${id}`;
+export const projectPath = (lang: string, code: string) => `/${lang}/p/${code}`;

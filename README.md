@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Majal (مجال)
 
-## Getting Started
+Civic platform for public-realm interventions. This is the MVP so far: **report a place** (pin, problem, details, photos), a moderator **approves** it, then residents **sign** with a one-time code sent to their mobile.
 
-First, run the development server:
+## Run
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000  (Arabic by default, /en for English)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Reports are stored locally in `.data/` (JSON file + `uploads/`). Delete the folder to reset.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Signing and admin
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Review queue: `/ar/admin` (dev password `majal-admin`). Approving a report opens it for signatures.
+- Signing: Kuwaiti mobile number + 6-digit code. In dev the code is always `123456` and no SMS is sent. One signature per number per project; the target is `SIGNATURE_TARGET` in `src/lib/domain.ts`.
+- Phone numbers are stored only as keyed hashes (never in clear text) and are never shown. Signatures are public as a count only.
+- A signed cookie keeps a verified person signed in for 90 days, so they can sign other projects without a new code.
+- Production needs real secrets and an SMS provider: copy `.env.example`. The app refuses to start signing in production without them (no silent weak defaults).
 
-## Learn More
+## Structure
 
-To learn more about Next.js, take a look at the following resources:
+- `src/app/[lang]/…`: pages (Arabic/English, RTL handled in the root layout)
+- `src/app/api/reports`: `POST` multipart endpoint (the future mobile app can reuse it)
+- `src/lib/domain.ts`: vocabulary (problems, fixes, statuses), validation, Kuwait bounds
+- `src/lib/repo/`: storage behind a `Repository` interface. `local.ts` is the dev store; add a Supabase implementation and select it in `index.ts`
+- `src/i18n/`: dictionaries (plain strings so they can be passed to client components)
+- `src/proxy.ts`: redirects unprefixed links, e.g. plaque short link `/p/P-0001` → `/ar/p/P-0001`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes for whoever continues
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 16 with Cache Components: read `node_modules/next/dist/docs/` before changing data fetching.
+- MapLibre 6 cannot find its worker once bundled, so `scripts/copy-maplibre-worker.mjs` copies it to `public/` (runs on install/dev/build).
+- Basemap defaults to OpenStreetMap raster tiles (development only). Set `NEXT_PUBLIC_MAP_STYLE` to a style URL for production. PACI basemap needs written permission first.
+- `src/lib/sms/` is the seam for a real SMS provider (Twilio, Vonage, Unifonic…). Only the dev stand-in exists.
+- Rate limits are in memory (single server). Move them to a shared store before running more than one instance.
+- When moving to Supabase, its phone auth can replace `src/lib/otp.ts` and the session cookie.
+- Not built yet: explorer map, share previews (OG images), PWA icons, address search, the design-proposal and sponsor stages.
