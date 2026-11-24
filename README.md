@@ -12,6 +12,10 @@ npm run dev        # http://localhost:3000  (Arabic by default, /en for English)
 Reports are stored locally in `.data/` (JSON file + `uploads/`). Delete the folder to reset.
 `npm run seed` fills it with sample projects around Salmiya so the explorer has something to show.
 
+## Place search (report map)
+
+The search box above the report map finds areas, streets and landmarks in Kuwait through `/api/geocode` (server-side, cached, spaced ≥1 s apart, restricted to Kuwait). Coordinates (`29.33, 48.07`, Arabic digits too) and pasted map links with `@lat,lng` jump straight there without a network call. Set `GEOCODER_USER_AGENT` before using the public Nominatim service; see `.env.example`.
+
 ## Explorer
 
 `/ar/explore`: public projects on a map and in a list, filtered by status and problem (filters drive both). Markers are real buttons, so they work with a keyboard and screen reader. Pending and rejected reports never appear.
@@ -43,4 +47,4 @@ Reports are stored locally in `.data/` (JSON file + `uploads/`). Delete the fold
 - When moving to Supabase, its phone auth can replace `src/lib/otp.ts` and the session cookie.
 - MapLibre's CSS is imported into a cascade layer (`globals.css`); unlayered, it overrides Tailwind and collapses maps to zero height.
 - The explorer uses one HTML marker per project. Past a few hundred projects, switch to a clustered GeoJSON layer (needs a style with glyphs for count labels).
-- Not built yet: share previews (OG images), PWA icons, address search, the design-proposal and sponsor stages.
+- Not built yet: share previews (OG images), PWA icons, the design-proposal and sponsor stages.

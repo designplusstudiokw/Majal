@@ -205,7 +205,7 @@ export default function ReportWizard({ lang, dict }: Props) {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {/* The map stays mounted so the chosen spot survives back/forward. */}
         <div className={step === 0 ? "h-full" : "hidden"}>
-          <LocationPicker value={pin} onChange={setPin} t={t.location} />
+          <LocationPicker lang={lang} value={pin} onChange={setPin} t={t.location} />
         </div>
 
         {step === 1 && (
