@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import LangToggle from "@/components/LangToggle";
 import { hasLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
+import Wordmark from "@/components/Wordmark";
 
 export default async function Home({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
@@ -12,7 +13,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col px-5 py-5">
       <header className="flex items-center justify-between">
-        <span className="text-xl font-bold">{t.brand}</span>
+        <Wordmark size="lg" />
         <LangToggle lang={lang} label={t.switchLang} />
       </header>
 

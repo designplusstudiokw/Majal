@@ -12,6 +12,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { repo } from "@/lib/repo";
 import { SESSION_COOKIE, readSession } from "@/lib/security";
 import { SITE_NAME, ogLocale } from "@/lib/site";
+import Wordmark from "@/components/Wordmark";
 
 /** What WhatsApp, iMessage, X and others show when the link is shared.
  *  The image comes from opengraph-image.tsx next to this file. */
@@ -78,8 +79,8 @@ async function Project({ params }: { params: PageProps<"/[lang]/p/[code]">["para
   return (
     <>
       <header className="flex items-center justify-between">
-        <Link href={`/${lang}`} className="text-xl font-bold">
-          {t.brand}
+        <Link href={`/${lang}`} aria-label={t.brand}>
+          <Wordmark />
         </Link>
         <LangToggle lang={lang} label={t.switchLang} />
       </header>

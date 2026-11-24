@@ -56,4 +56,5 @@ Sharing a project link (including the plaque short link `/p/P-0001`) shows a car
 - When moving to Supabase, its phone auth can replace `src/lib/otp.ts` and the session cookie.
 - MapLibre's CSS is imported into a cascade layer (`globals.css`); unlayered, it overrides Tailwind and collapses maps to zero height.
 - The explorer uses one HTML marker per project. Past a few hundred projects, switch to a clustered GeoJSON layer (needs a style with glyphs for count labels).
-- Not built yet: PWA icons, the design-proposal and sponsor stages.
+- Branding is typographic until the logo arrives: `src/components/Wordmark.tsx` (headers) and `src/lib/brand-icon.tsx` (app icons, IBM Plex Sans Arabic Bold on a steel plate). Swap those two files for the logo.
+- Not built yet: the design-proposal and sponsor stages.

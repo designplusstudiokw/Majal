@@ -8,6 +8,7 @@ import LangToggle from "@/components/LangToggle";
 import { hasLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { repo } from "@/lib/repo";
+import Wordmark from "@/components/Wordmark";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/explore">): Promise<Metadata> {
   const { lang } = await params;
@@ -22,8 +23,8 @@ export default async function ExplorePage({ params }: PageProps<"/[lang]/explore
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-4 md:h-dvh md:max-w-none md:p-0">
       <header className="flex items-center justify-between gap-3 md:border-b md:border-line md:px-4 md:py-3">
-        <Link href={`/${lang}`} className="text-xl font-bold">
-          {t.brand}
+        <Link href={`/${lang}`} aria-label={t.brand}>
+          <Wordmark />
         </Link>
         <h1 className="sr-only">{t.explore.title}</h1>
         <div className="flex items-center gap-2">

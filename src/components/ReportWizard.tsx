@@ -14,6 +14,7 @@ import {
 import { downscaleImage } from "@/lib/downscale";
 import { fmt } from "@/i18n/fmt";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import Wordmark from "@/components/Wordmark";
 
 type Photo = { id: string; blob: Blob; preview: string };
 type Props = { lang: string; dict: Dictionary };
@@ -172,8 +173,8 @@ export default function ReportWizard({ lang, dict }: Props) {
     >
       <header className="px-4 pt-4">
         <div className="flex items-center justify-between text-sm text-muted">
-          <Link href={`/${lang}`} className="font-semibold text-foreground">
-            {dict.brand}
+          <Link href={`/${lang}`} aria-label={dict.brand}>
+            <Wordmark />
           </Link>
           <span>{fmt(t.stepOf, { n: step + 1, total: 4 })}</span>
         </div>
