@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -5,11 +6,52 @@ import { Suspense } from "react";
 import LangToggle from "@/components/LangToggle";
 import ShareButton from "@/components/ShareButton";
 import SignPanel from "@/components/SignPanel";
-import { SIGNATURE_TARGET, photoUrl } from "@/lib/domain";
+import { SIGNATURE_TARGET, isPublicStatus, photoUrl } from "@/lib/domain";
 import { hasLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { repo } from "@/lib/repo";
 import { SESSION_COOKIE, readSession } from "@/lib/security";
+import { SITE_NAME, ogLocale } from "@/lib/site";
+
+/** What WhatsApp, iMessage, X and others show when the link is shared.
+ *  The image comes from opengraph-image.tsx next to this file. */
+export async function generateMetadata({
+  params,
+}: PageProps<"/[lang]/p/[code]">): Promise<Metadata> {
+  const { lang, code } = await params;
+  if (!hasLocale(lang)) return {};
+  const t = getDictionary(lang);
+  const project = await repo.getProjectByCode(code);
+  if (!project) return { title: t.project.notFound, robots: { index: false } };
+
+  const description = clipText(project.description, 180);
+  const path = `/${lang}/p/${project.code}`;
+  return {
+    title: project.title,
+    description,
+    alternates: {
+      canonical: path,
+      languages: { ar: `/ar/p/${project.code}`, en: `/en/p/${project.code}` },
+    },
+    // Reports not yet approved (or rejected) stay out of search engines.
+    robots: isPublicStatus(project.status) ? undefined : { index: false, follow: false },
+    // Nested objects replace the layout's, so repeat the shared fields.
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      locale: ogLocale(lang),
+      url: path,
+      title: project.title,
+      description,
+    },
+    twitter: { card: "summary_large_image", title: project.title, description },
+  };
+}
+
+function clipText(s: string, max: number) {
+  const t = s.replace(/\s+/g, " ").trim();
+  return t.length <= max ? t : `${t.slice(0, t.lastIndexOf(" ", max) > max * 0.6 ? t.lastIndexOf(" ", max) : max).trim()}…`;
+}
 
 export default function ProjectPage({ params }: PageProps<"/[lang]/p/[code]">) {
   return (

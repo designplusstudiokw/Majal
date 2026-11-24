@@ -16,6 +16,15 @@ Reports are stored locally in `.data/` (JSON file + `uploads/`). Delete the fold
 
 The search box above the report map finds areas, streets and landmarks in Kuwait through `/api/geocode` (server-side, cached, spaced ≥1 s apart, restricted to Kuwait). Coordinates (`29.33, 48.07`, Arabic digits too) and pasted map links with `@lat,lng` jump straight there without a network call. Set `GEOCODER_USER_AGENT` before using the public Nominatim service; see `.env.example`.
 
+## Link previews
+
+Sharing a project link (including the plaque short link `/p/P-0001`) shows a card with the title, status and signature progress in WhatsApp, iMessage, X, Telegram and others. Pages without their own card use a general one with the headline.
+
+- Cards: `src/app/[lang]/opengraph-image.tsx` and `src/app/[lang]/p/[code]/opengraph-image.tsx`; page text and tags in each page's `generateMetadata`.
+- Arabic text is shaped with HarfBuzz (`src/lib/og-text.ts`) and drawn as outlines, because next/og's own text layout puts Arabic words in the wrong order with uneven gaps. Fonts: `assets/fonts` (IBM Plex Sans Arabic, SIL Open Font License).
+- Reports not yet approved, or rejected, are marked `noindex` so search engines skip them.
+- Set `SITE_URL` if the site runs anywhere other than https://ma-jal.com.
+
 ## Explorer
 
 `/ar/explore`: public projects on a map and in a list, filtered by status and problem (filters drive both). Markers are real buttons, so they work with a keyboard and screen reader. Pending and rejected reports never appear.
@@ -47,4 +56,4 @@ The search box above the report map finds areas, streets and landmarks in Kuwait
 - When moving to Supabase, its phone auth can replace `src/lib/otp.ts` and the session cookie.
 - MapLibre's CSS is imported into a cascade layer (`globals.css`); unlayered, it overrides Tailwind and collapses maps to zero height.
 - The explorer uses one HTML marker per project. Past a few hundred projects, switch to a clustered GeoJSON layer (needs a style with glyphs for count labels).
-- Not built yet: share previews (OG images), PWA icons, the design-proposal and sponsor stages.
+- Not built yet: PWA icons, the design-proposal and sponsor stages.

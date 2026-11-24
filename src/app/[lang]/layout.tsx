@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
 import { dirOf, hasLocale, locales } from "@/i18n/config";
+import { getDictionary } from "@/i18n/get-dictionary";
+import { SITE_NAME, SITE_URL, ogLocale } from "@/lib/site";
 import "../globals.css";
 
 const plex = IBM_Plex_Sans_Arabic({
@@ -10,11 +12,18 @@ const plex = IBM_Plex_Sans_Arabic({
   weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: { default: "Majal · مجال", template: "%s · Majal" },
-  description:
-    "Report places in the public realm that need work, gather signatures, and follow them to completion.",
-};
+export async function generateMetadata({ params }: LayoutProps<"/[lang]">): Promise<Metadata> {
+  const { lang } = await params;
+  const t = getDictionary(hasLocale(lang) ? lang : "ar");
+  return {
+    metadataBase: SITE_URL,
+    title: { default: `${t.brand} · ${t.home.headline}`, template: `%s · ${t.brand}` },
+    description: t.home.sub,
+    alternates: { languages: { ar: "/ar", en: "/en" } },
+    openGraph: { type: "website", siteName: SITE_NAME, locale: ogLocale(lang) },
+    twitter: { card: "summary_large_image" },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
