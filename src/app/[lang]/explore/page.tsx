@@ -7,6 +7,7 @@ import Explorer from "@/components/Explorer";
 import LangToggle from "@/components/LangToggle";
 import { hasLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
+import { THEME_KEYS } from "@/lib/domain";
 import { repo } from "@/lib/repo";
 import Wordmark from "@/components/Wordmark";
 
@@ -15,7 +16,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/explore">)
   return { title: hasLocale(lang) ? getDictionary(lang).explore.title : undefined };
 }
 
-export default async function ExplorePage({ params }: PageProps<"/[lang]/explore">) {
+export default async function ExplorePage({ params, searchParams }: PageProps<"/[lang]/explore">) {
   const { lang } = await params;
   if (!hasLocale(lang)) notFound();
   const t = getDictionary(lang);
@@ -35,22 +36,38 @@ export default async function ExplorePage({ params }: PageProps<"/[lang]/explore
         </div>
       </header>
       <Suspense fallback={<p className="py-20 text-center text-muted">…</p>}>
-        <Projects lang={lang} />
+        <Projects lang={lang} searchParams={searchParams} />
       </Suspense>
     </main>
   );
 }
 
-async function Projects({ lang }: { lang: Locale }) {
+async function Projects({
+  lang,
+  searchParams,
+}: {
+  lang: Locale;
+  searchParams: PageProps<"/[lang]/explore">["searchParams"];
+}) {
   // Always read fresh data at request time; never bake the list in at build.
   await connection();
   const t = getDictionary(lang);
   const projects = await repo.listPublicProjects();
+  const requested = (await searchParams).theme;
+  const initialTheme = THEME_KEYS.find((k) => k === requested);
   return (
     <Explorer
       lang={lang}
       projects={projects}
-      dict={{ explore: t.explore, statuses: t.statuses, problems: t.problems, sign: t.sign }}
+      initialTheme={initialTheme}
+      dict={{
+        explore: t.explore,
+        statuses: t.statuses,
+        problems: t.problems,
+        sign: t.sign,
+        themes: t.themes,
+        curated: t.curated,
+      }}
     />
   );
 }

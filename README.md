@@ -29,6 +29,15 @@ Sharing a project link (including the plaque short link `/p/P-0001`) shows a car
 
 `/ar/explore`: public projects on a map and in a list, filtered by status and problem (filters drive both). Markers are real buttons, so they work with a keyboard and screen reader. Pending and rejected reports never appear.
 
+## Curated suggestions
+
+The team can publish common, easy-to-spot gaps as **suggestions**, grouped in collections (`THEME_KEYS` in `src/lib/domain.ts`): crossings at schools, at kindergartens in residential areas, and on major roads. Suggestions skip the review queue, open for signatures immediately, and are labelled "Suggested by Majal" on project pages, the explorer and previews. Each has an area (neighbourhood) for the explorer's area filter.
+
+- One at a time: `/ar/admin/new` (map with search; collection and area stay filled for the next point).
+- In bulk: `/ar/admin/import`. Download the template, fill one row per place (`theme, area, title, description, lat, lng, fix`), upload, check the preview (bad rows are never imported; places within 40 m of an existing one are flagged and skipped by default), then import.
+- Starting list from OpenStreetMap: `node scripts/osm-candidates.mjs --area Salmiya --label "السالمية" --type school` (or `kindergarten`) writes a draft CSV of mapped schools or kindergartens. Pins are building centres: move each to the real crossing, rewrite titles as needed, then import. OpenStreetMap coverage in Kuwait is incomplete, so treat it as a head start, not a census.
+- Collections are linkable: `/ar/explore?theme=school_crossing`. The home page lists collections that have places.
+
 ## Signing and admin
 
 - Review queue: `/ar/admin` (dev password `majal-admin`). Approving a report opens it for signatures.

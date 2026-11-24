@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AdminLogin, ReviewButtons } from "@/components/AdminActions";
+import { ReviewButtons } from "@/components/AdminActions";
+import AdminGate from "@/components/AdminGate";
 import { SIGNATURE_TARGET } from "@/lib/domain";
 import { repo } from "@/lib/repo";
-import { ADMIN_COOKIE, adminPassword, isAdminToken } from "@/lib/security";
 
 export const metadata: Metadata = { title: "Admin", robots: { index: false, follow: false } };
 
@@ -22,22 +21,14 @@ export default function AdminPage({ params }: PageProps<"/[lang]/admin">) {
 
 async function Admin({ params }: { params: PageProps<"/[lang]/admin">["params"] }) {
   const { lang } = await params;
-  // Read the cookie first: it makes this render per request. Without it the
-  // env check below would be evaluated at build time and frozen into the page.
-  const token = (await cookies()).get(ADMIN_COOKIE)?.value;
+  return (
+    <AdminGate>
+      <Queue lang={lang} />
+    </AdminGate>
+  );
+}
 
-  if (!adminPassword()) {
-    return <p className="py-10">Admin is disabled. Set ADMIN_PASSWORD to enable it.</p>;
-  }
-  if (!isAdminToken(token)) {
-    return (
-      <div className="mx-auto grid max-w-sm gap-4 py-16">
-        <h1 className="text-2xl font-bold">Admin</h1>
-        <AdminLogin />
-      </div>
-    );
-  }
-
+async function Queue({ lang }: { lang: string }) {
   const projects = await repo.listProjects(); // newest first
   const rows = await Promise.all(
     projects.map(async (p) => ({ p, signatures: await repo.countSignatures(p.code) })),
@@ -47,7 +38,17 @@ async function Admin({ params }: { params: PageProps<"/[lang]/admin">["params"] 
 
   return (
     <div className="grid gap-8">
-      <h1 className="text-2xl font-bold">Review queue</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">Review queue</h1>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/${lang}/admin/new`} className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink">
+            Add a suggestion
+          </Link>
+          <Link href={`/${lang}/admin/import`} className="rounded-full border border-line px-4 py-2 text-sm font-medium">
+            Import spreadsheet
+          </Link>
+        </div>
+      </div>
 
       <section className="grid gap-3">
         <h2 className="font-semibold">Waiting for review ({pending.length})</h2>
@@ -80,6 +81,9 @@ async function Admin({ params }: { params: PageProps<"/[lang]/admin">["params"] 
           >
             <span>
               <span className="font-semibold">{p.code}</span> {p.title}
+              {p.source === "curated" && (
+                <span className="ms-2 rounded-full bg-steel/15 px-2 py-0.5 text-xs text-steel">curated · {p.area}</span>
+              )}
             </span>
             <span className="shrink-0 text-sm text-muted">
               {p.status.replaceAll("_", " ")} · {signatures}/{SIGNATURE_TARGET}

@@ -25,18 +25,36 @@ const samples = [
   ["completed", "shade", "seating", 29.3381, 48.0661, "جلسات على الواجهة البحرية", "تمت إضافة جلسات مظللة على الممشى بعد حملة توقيع ناجحة.", 240],
 ];
 
+// Curated suggestions: [theme, area, lat, lng, title, description, signatures].
+// Generic sample names only; real curation uses the admin import.
+const curated = [
+  ["school_crossing", "السالمية", 29.3352, 48.0733, "معبر مشاة أمام مدرسة ابتدائية في القطعة 5", "الطلاب يعبرون بين السيارات وقت الدخول والانصراف ولا توجد إشارة مشاة.", 18],
+  ["school_crossing", "السالمية", 29.3415, 48.0846, "معبر أمام مدرسة متوسطة بنين على شارع داخلي", "لا توجد خطوط عبور ولا مطبات قبل البوابة.", 9],
+  ["school_crossing", "حولي", 29.3378, 48.0302, "عبور آمن إلى مدرسة ثانوية في حولي", "الرصيف ضيق والسيارات تتوقف على خط العبور.", 27],
+  ["kindergarten_crossing", "السالمية", 29.3299, 48.0798, "معبر أمام روضة داخل القطعة السكنية 10", "أطفال صغار مع أهاليهم يعبرون شارعًا تمر فيه السيارات بسرعة.", 12],
+  ["kindergarten_crossing", "الجابرية", 29.3176, 48.0279, "روضة أطفال بلا معبر في القطعة 4", "لا توجد مساحة آمنة للتوقف ولا عبور واضح.", 5],
+  ["major_crossing", "السالمية", 29.3318, 48.0612, "عبور شارع الخليج العربي عند الممشى", "الناس يعبرون الطريق السريع رغم وجود جسر بعيد. جسر أم عبور أرضي؟", 44],
+];
+
 const projects = [];
 const signatures = [];
 samples.forEach(([status, problem, fix, lat, lng, title, description, sigs], i) => {
   const code = `P-${String(i + 1).padStart(4, "0")}`;
   const createdAt = new Date(Date.now() - (samples.length - i) * 4 * 86400000).toISOString();
-  projects.push({ id: randomBytes(8).toString("hex"), code, status, problem, fix, title, description, lat, lng, photos: [], createdAt });
+  projects.push({ id: randomBytes(8).toString("hex"), code, status, problem, fix, title, description, lat, lng, photos: [], createdAt, source: "resident", theme: null, area: null });
   for (let n = 0; n < sigs; n++) {
     // Random stand-ins for phone hashes: these are not real people.
     signatures.push({ projectCode: code, phoneHash: randomBytes(32).toString("hex"), createdAt });
   }
 });
 
+curated.forEach(([theme, area, lat, lng, title, description, sigs]) => {
+  const code = `P-${String(projects.length + 1).padStart(4, "0")}`;
+  const createdAt = new Date().toISOString();
+  projects.push({ id: randomBytes(8).toString("hex"), code, status: "open_for_signatures", problem: "crossing", fix: null, title, description, lat, lng, photos: [], createdAt, source: "curated", theme, area });
+  for (let n = 0; n < sigs; n++) signatures.push({ projectCode: code, phoneHash: randomBytes(32).toString("hex"), createdAt });
+});
+
 mkdirSync(dir, { recursive: true });
-writeFileSync(file, JSON.stringify({ counter: samples.length, projects, signatures, otps: {} }, null, 2));
-console.log(`Wrote ${projects.length} sample projects to ${file}`);
+writeFileSync(file, JSON.stringify({ counter: projects.length, projects, signatures, otps: {} }, null, 2));
+console.log(`Wrote ${projects.length} sample projects (${curated.length} curated) to ${file}`);

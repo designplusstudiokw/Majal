@@ -2,8 +2,8 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isPublicStatus, type Project, type ReportInput } from "@/lib/domain";
-import type { NewPhoto, OtpRecord, Repository } from "./types";
+import { isPublicStatus, type Project } from "@/lib/domain";
+import type { NewPhoto, NewProject, OtpRecord, Repository } from "./types";
 
 /**
  * Local development store: one JSON file plus an uploads folder under .data/.
@@ -38,7 +38,13 @@ async function load(): Promise<Db> {
     // Files written before signatures existed lack these fields.
     return {
       counter: db.counter ?? 0,
-      projects: db.projects ?? [],
+      // Projects saved before curation existed are residents' reports.
+      projects: (db.projects ?? []).map((p) => ({
+        ...p,
+        source: p.source ?? "resident",
+        theme: p.theme ?? null,
+        area: p.area ?? null,
+      })),
       signatures: db.signatures ?? [],
       otps: db.otps ?? {},
     };
@@ -65,8 +71,30 @@ function exclusive<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
+function newProject(db: Db, input: NewProject, photos: string[]): Project {
+  db.counter += 1;
+  const project: Project = {
+    id: randomBytes(8).toString("hex"),
+    code: `P-${String(db.counter).padStart(4, "0")}`,
+    status: input.status ?? "pending_review",
+    problem: input.problem,
+    fix: input.fix ?? null,
+    title: input.title,
+    description: input.description,
+    lat: input.lat,
+    lng: input.lng,
+    photos,
+    createdAt: new Date().toISOString(),
+    source: input.source ?? "resident",
+    theme: input.theme ?? null,
+    area: input.area ?? null,
+  };
+  db.projects.push(project);
+  return project;
+}
+
 export const localRepository: Repository = {
-  async createProject(input: ReportInput, photos: NewPhoto[]) {
+  async createProject(input: NewProject, photos: NewPhoto[]) {
     return exclusive(async () => {
       await mkdir(UPLOAD_DIR, { recursive: true });
       const photoIds: string[] = [];
@@ -76,25 +104,19 @@ export const localRepository: Repository = {
         await writeFile(path.join(UPLOAD_DIR, id), photo.bytes);
         photoIds.push(id);
       }
-
       const db = await load();
-      db.counter += 1;
-      const project: Project = {
-        id: randomBytes(8).toString("hex"),
-        code: `P-${String(db.counter).padStart(4, "0")}`,
-        status: "pending_review",
-        problem: input.problem,
-        fix: input.fix ?? null,
-        title: input.title,
-        description: input.description,
-        lat: input.lat,
-        lng: input.lng,
-        photos: photoIds,
-        createdAt: new Date().toISOString(),
-      };
-      db.projects.push(project);
+      const project = newProject(db, input, photoIds);
       await save(db);
       return project;
+    });
+  },
+
+  async createProjects(inputs: NewProject[]) {
+    return exclusive(async () => {
+      const db = await load();
+      const created = inputs.map((input) => newProject(db, input, []));
+      await save(db); // one write: all or nothing
+      return created;
     });
   },
 

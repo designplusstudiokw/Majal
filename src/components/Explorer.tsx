@@ -10,7 +10,9 @@ import {
   PUBLIC_STATUSES,
   SIGNATURE_TARGET,
   STATUS_COLORS,
+  THEME_KEYS,
   type ProblemKey,
+  type ThemeKey,
   type ProjectSummary,
   type PublicStatus,
 } from "@/lib/domain";
@@ -23,7 +25,9 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 type Props = {
   lang: string;
   projects: ProjectSummary[];
-  dict: Pick<Dictionary, "explore" | "statuses" | "problems" | "sign">;
+  dict: Pick<Dictionary, "explore" | "statuses" | "problems" | "sign" | "themes" | "curated">;
+  /** From ?theme= so collections can be linked to directly. */
+  initialTheme?: ThemeKey;
 };
 
 const chip = (on: boolean) =>
@@ -31,11 +35,19 @@ const chip = (on: boolean) =>
     on ? "border-foreground bg-foreground font-semibold text-background" : "border-line bg-surface"
   }`;
 
-export default function Explorer({ lang, projects, dict }: Props) {
+export default function Explorer({ lang, projects, dict, initialTheme }: Props) {
   const t = dict.explore;
   const [status, setStatus] = useState<PublicStatus | "all">("all");
   const [problem, setProblem] = useState<ProblemKey | "all">("all");
+  const [theme, setTheme] = useState<ThemeKey | "all">(initialTheme ?? "all");
+  const [area, setArea] = useState<string>("all");
+  const areas = useMemo(
+    () => [...new Set(projects.map((p) => p.area).filter((a): a is string => Boolean(a)))].sort((a, b) => a.localeCompare(b, lang)),
+    [projects, lang],
+  );
   const [selected, setSelected] = useState<string | null>(null);
+  // Markers are created asynchronously; filters must re-apply once they exist.
+  const [markersReady, setMarkersReady] = useState(false);
 
   const mapBox = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
@@ -47,9 +59,11 @@ export default function Explorer({ lang, projects, dict }: Props) {
       projects.filter(
         (p) =>
           (status === "all" || p.status === status) &&
-          (problem === "all" || p.problem === problem),
+          (problem === "all" || p.problem === problem) &&
+          (theme === "all" || p.theme === theme) &&
+          (area === "all" || p.area === area),
       ),
-    [projects, status, problem],
+    [projects, status, problem, theme, area],
   );
   const visibleCodes = useMemo(() => new Set(visible.map((p) => p.code)), [visible]);
   const selectedProject = visible.find((p) => p.code === selected) ?? null;
@@ -110,6 +124,7 @@ export default function Explorer({ lang, projects, dict }: Props) {
         instance.jumpTo({ center: [projects[0].lng, projects[0].lat], zoom: 15 });
       }
       map.current = instance;
+      setMarkersReady(true);
     })();
 
     return () => {
@@ -118,6 +133,7 @@ export default function Explorer({ lang, projects, dict }: Props) {
       markerStore.clear();
       instance?.remove();
       map.current = null;
+      setMarkersReady(false);
     };
   }, [projects]);
 
@@ -127,7 +143,7 @@ export default function Explorer({ lang, projects, dict }: Props) {
       el.hidden = !visibleCodes.has(code);
       el.dataset.selected = String(code === selected);
     });
-  }, [visibleCodes, selected]);
+  }, [visibleCodes, selected, markersReady]);
 
   // Keep the selected marker visible above the preview card.
   useEffect(() => {
@@ -153,7 +169,17 @@ export default function Explorer({ lang, projects, dict }: Props) {
     mapBox.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 
-  const filtersActive = status !== "all" || problem !== "all";
+  const filtersActive = status !== "all" || problem !== "all" || theme !== "all" || area !== "all";
+
+  // Keep ?theme= in the address bar so a filtered view can be shared.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (theme === "all") url.searchParams.delete("theme");
+    else url.searchParams.set("theme", theme);
+    window.history.replaceState(window.history.state, "", url);
+  }, [theme]);
+
+  const select = "min-h-11 min-w-0 flex-1 basis-[45%] rounded-xl border border-line bg-surface px-3 md:basis-full";
 
   return (
     <div className="grid gap-4 md:min-h-0 md:flex-1 md:grid-cols-[minmax(320px,400px)_1fr] md:gap-0">
@@ -177,16 +203,22 @@ export default function Explorer({ lang, projects, dict }: Props) {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="theme-filter" className="sr-only">
+              {t.collection}
+            </label>
+            <select id="theme-filter" value={theme} onChange={(e) => setTheme(e.target.value as ThemeKey | "all")} className={select}>
+              <option value="all">{t.allCollections}</option>
+              {THEME_KEYS.map((k) => (
+                <option key={k} value={k}>
+                  {dict.themes[k].label}
+                </option>
+              ))}
+            </select>
             <label htmlFor="problem-filter" className="sr-only">
               {t.category}
             </label>
-            <select
-              id="problem-filter"
-              value={problem}
-              onChange={(e) => setProblem(e.target.value as ProblemKey | "all")}
-              className="min-h-11 flex-1 rounded-xl border border-line bg-surface px-3"
-            >
+            <select id="problem-filter" value={problem} onChange={(e) => setProblem(e.target.value as ProblemKey | "all")} className={select}>
               <option value="all">{t.allCategories}</option>
               {PROBLEM_KEYS.map((k) => (
                 <option key={k} value={k}>
@@ -194,6 +226,21 @@ export default function Explorer({ lang, projects, dict }: Props) {
                 </option>
               ))}
             </select>
+            {areas.length > 0 && (
+              <>
+                <label htmlFor="area-filter" className="sr-only">
+                  {t.area}
+                </label>
+                <select id="area-filter" value={area} onChange={(e) => setArea(e.target.value)} className={select}>
+                  <option value="all">{t.allAreas}</option>
+                  {areas.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
             <p className="shrink-0 text-sm text-muted" aria-live="polite">
               {visible.length === 1 ? t.countOne : fmt(t.count, { n: visible.length })}
             </p>
@@ -212,6 +259,8 @@ export default function Explorer({ lang, projects, dict }: Props) {
                 onClick={() => {
                   setStatus("all");
                   setProblem("all");
+                  setTheme("all");
+                  setArea("all");
                 }}
               >
                 {t.clear}
@@ -242,7 +291,15 @@ export default function Explorer({ lang, projects, dict }: Props) {
                   <Link href={`/${lang}/p/${p.code}`} className="text-lg font-semibold leading-snug hover:underline">
                     {p.title}
                   </Link>
-                  <p className="text-sm text-muted">{dict.problems[p.problem].label}</p>
+                  <p className="text-sm text-muted">
+                    {p.theme ? dict.themes[p.theme].short : dict.problems[p.problem].label}
+                    {p.area ? ` · ${p.area}` : ""}
+                  </p>
+                  {p.source === "curated" && (
+                    <p className="justify-self-start rounded-full bg-steel/15 px-2.5 py-0.5 text-xs font-medium text-steel">
+                      {dict.curated.badge}
+                    </p>
+                  )}
                   <div>
                     <p className="text-sm">{signatureCountText(dict.sign, p.signatures, SIGNATURE_TARGET)}</p>
                     <div aria-hidden className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">

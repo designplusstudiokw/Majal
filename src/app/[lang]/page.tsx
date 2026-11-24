@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
+import { Suspense } from "react";
 import LangToggle from "@/components/LangToggle";
-import { hasLocale } from "@/i18n/config";
+import { hasLocale, type Locale } from "@/i18n/config";
+import { fmt } from "@/i18n/fmt";
+import { THEME_KEYS } from "@/lib/domain";
+import { repo } from "@/lib/repo";
 import { getDictionary } from "@/i18n/get-dictionary";
 import Wordmark from "@/components/Wordmark";
 
@@ -36,7 +41,50 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
         </Link>
       </section>
 
-      <p className="text-sm text-muted">{t.home.note}</p>
+      <Suspense fallback={null}>
+        <Collections lang={lang} />
+      </Suspense>
+
+      <p className="mt-10 text-sm text-muted">{t.home.note}</p>
     </main>
+  );
+}
+
+/** Curated collections with places open for signatures ("Start here"). */
+async function Collections({ lang }: { lang: Locale }) {
+  await connection(); // counts change; never bake them in at build time
+  const t = getDictionary(lang);
+  const projects = await repo.listPublicProjects();
+  const counts = THEME_KEYS.map((k) => ({
+    key: k,
+    n: projects.filter((p) => p.theme === k).length,
+  })).filter((c) => c.n > 0);
+  if (counts.length === 0) return null;
+
+  return (
+    <section aria-labelledby="start-here" className="grid gap-3">
+      <h2 id="start-here" className="text-2xl font-bold">
+        {t.curated.homeTitle}
+      </h2>
+      <p className="text-muted">{t.curated.homeSub}</p>
+      <ul className="grid gap-3">
+        {counts.map(({ key, n }) => (
+          <li key={key}>
+            <Link
+              href={`/${lang}/explore?theme=${key}`}
+              className="grid gap-1 rounded-2xl border border-line bg-surface p-4 hover:border-foreground"
+            >
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="text-lg font-semibold">{t.themes[key].label}</span>
+                <span className="shrink-0 text-sm text-muted">
+                  {n === 1 ? t.curated.onePlace : fmt(t.curated.places, { n })}
+                </span>
+              </span>
+              <span className="text-sm text-muted">{t.themes[key].hint}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

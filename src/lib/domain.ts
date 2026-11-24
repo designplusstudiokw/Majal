@@ -32,6 +32,19 @@ export const FIX_KEYS = [
 ] as const;
 export type FixKey = (typeof FIX_KEYS)[number];
 
+/** Curated collections of common gaps, suggested by the Majal team. */
+export const THEME_KEYS = ["school_crossing", "kindergarten_crossing", "major_crossing"] as const;
+export type ThemeKey = (typeof THEME_KEYS)[number];
+/** The problem a curated suggestion files under by default. */
+export const THEME_PROBLEM: Record<ThemeKey, ProblemKey> = {
+  school_crossing: "crossing",
+  kindergarten_crossing: "crossing",
+  major_crossing: "crossing",
+};
+
+/** Who created a project: a resident's report or a curated suggestion. */
+export type ProjectSource = "resident" | "curated";
+
 export const STATUSES = [
   "pending_review", // submitted, waiting for a moderator
   "open_for_signatures",
@@ -124,6 +137,23 @@ export const reportSchema = z.object({
 });
 export type ReportInput = z.infer<typeof reportSchema>;
 
+/** A suggestion added by the team (one at a time or by bulk import). */
+export const suggestionSchema = reportSchema.extend({
+  theme: z.enum(THEME_KEYS),
+  area: z.string().trim().min(2).max(60),
+  problem: z.enum(PROBLEM_KEYS).optional(),
+});
+export type SuggestionInput = z.infer<typeof suggestionSchema>;
+
+/** Distance in metres between two points (haversine). */
+export function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(h));
+}
+
 // ---------------------------------------------------------------------------
 // Stored project
 // ---------------------------------------------------------------------------
@@ -142,6 +172,11 @@ export type Project = {
   /** Photo ids; resolve to URLs with photoUrl(). */
   photos: string[];
   createdAt: string;
+  source: ProjectSource;
+  /** Curated collection, if any. */
+  theme: ThemeKey | null;
+  /** Neighbourhood name, e.g. "السالمية". Set for curated suggestions. */
+  area: string | null;
 };
 
 /** A project as listed publicly, with its signature count. */

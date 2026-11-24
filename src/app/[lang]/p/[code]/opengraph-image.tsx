@@ -78,7 +78,7 @@ export default async function Image({ params }: { params: Promise<{ lang: string
 
         {/* Titles may be in either language; keep them on the card's start edge. */}
         <Txt text={project.title} size={64} weight={700} color={OG.ink} maxWidth={W} maxLines={2} lineHeight={1.3} align={rtl ? "right" : "left"} style={{ marginTop: 28 }} />
-        <Txt text={t.problems[project.problem].label} size={32} color={OG.muted} maxWidth={W} maxLines={1} rtl={rtl} style={{ marginTop: 8 }} />
+        <Txt text={[project.theme ? t.themes[project.theme].short : t.problems[project.problem].label, project.area].filter(Boolean).join(" · ")} size={32} color={OG.muted} maxWidth={W} maxLines={1} rtl={rtl} style={{ marginTop: 8 }} />
 
         <div style={{ display: "flex", flex: 1 }} />
 

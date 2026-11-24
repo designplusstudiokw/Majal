@@ -1,4 +1,20 @@
-import type { Project, ProjectStatus, ProjectSummary, ReportInput } from "@/lib/domain";
+import type {
+  Project,
+  ProjectSource,
+  ProjectStatus,
+  ProjectSummary,
+  ReportInput,
+  ThemeKey,
+} from "@/lib/domain";
+
+/** A project to create: a resident report, or a curated suggestion. */
+export type NewProject = ReportInput & {
+  source?: ProjectSource;
+  theme?: ThemeKey | null;
+  area?: string | null;
+  /** Defaults to pending_review. */
+  status?: ProjectStatus;
+};
 
 export type NewPhoto = { bytes: Uint8Array; contentType: string };
 
@@ -17,7 +33,9 @@ export type OtpRecord = {
  * file; later a Supabase implementation replaces it without touching callers.
  */
 export interface Repository {
-  createProject(input: ReportInput, photos: NewPhoto[]): Promise<Project>;
+  createProject(input: NewProject, photos: NewPhoto[]): Promise<Project>;
+  /** Several at once, all or nothing (bulk import). */
+  createProjects(inputs: NewProject[]): Promise<Project[]>;
   getProjectByCode(code: string): Promise<Project | null>;
   listProjects(): Promise<Project[]>;
   /** Publicly visible projects with signature counts, in one query. */

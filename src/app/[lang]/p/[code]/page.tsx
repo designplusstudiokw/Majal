@@ -107,6 +107,17 @@ async function Project({ params }: { params: PageProps<"/[lang]/p/[code]">["para
             </p>
           </div>
 
+          {project.source === "curated" && (
+            <div className="rounded-2xl border border-steel/30 bg-steel/10 p-4">
+              <p className="font-semibold text-steel">
+                {t.curated.badge}
+                {project.theme ? ` · ${t.themes[project.theme].label}` : ""}
+                {project.area ? ` · ${project.area}` : ""}
+              </p>
+              <p className="mt-1">{t.curated.body}</p>
+            </div>
+          )}
+
           {project.status === "pending_review" && (
             <div className="rounded-2xl border border-line bg-surface p-4">
               <p className="font-semibold">{t.project.pendingTitle}</p>

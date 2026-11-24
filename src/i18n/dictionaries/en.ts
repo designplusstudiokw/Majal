@@ -1,4 +1,4 @@
-import type { FixKey, ProblemKey, ProjectStatus } from "@/lib/domain";
+import type { FixKey, ProblemKey, ProjectStatus, ThemeKey } from "@/lib/domain";
 
 export const en = {
   brand: "Majal",
@@ -111,6 +111,10 @@ export const en = {
     empty: "No public projects yet. Reports appear here once a moderator approves them.",
     noMatch: "No projects match these filters.",
     clear: "Clear filters",
+    collection: "Collection",
+    allCollections: "All collections",
+    area: "Area",
+    allAreas: "All areas",
     showOnMap: "Show on map",
     open: "View project",
     close: "Close",
@@ -147,6 +151,32 @@ export const en = {
       locked: "Too many wrong attempts. Send a new code.",
       generic: "Something went wrong. Please try again.",
     },
+  },
+  themes: {
+    school_crossing: {
+      label: "Crossings at schools",
+      short: "School crossing",
+      hint: "Safe crossings in front of public and private schools.",
+    },
+    kindergarten_crossing: {
+      label: "Crossings at kindergartens",
+      short: "Kindergarten crossing",
+      hint: "Kindergartens inside residential blocks, where the youngest children cross.",
+    },
+    major_crossing: {
+      label: "Crossings on major roads",
+      short: "Major road crossing",
+      hint: "Bridge or street level? Where people actually cross busy roads.",
+    },
+  } satisfies Record<ThemeKey, { label: string; short: string; hint: string }>,
+  curated: {
+    badge: "Suggested by Majal",
+    body: "Our team mapped this as a common gap. Sign if you agree it needs fixing, and add what you know about the place.",
+    homeTitle: "Start here",
+    homeSub: "Common gaps we have mapped across Kuwait's neighbourhoods. Find one near you and add your signature.",
+    places: "{n} places",
+    onePlace: "1 place",
+    view: "See on the map",
   },
   problems: {
     crossing: { label: "Hard to cross the road", hint: "No safe or comfortable crossing" },
