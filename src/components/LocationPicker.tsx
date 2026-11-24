@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { KUWAIT_BOUNDS } from "@/lib/domain";
 import { mapStyle } from "@/lib/map-style";
+import { loadMapLibre } from "@/lib/maplibre";
 import { fmt } from "@/i18n/fmt";
 import type { Dictionary } from "@/i18n/get-dictionary";
 
@@ -44,10 +45,8 @@ export default function LocationPicker({ value, onChange, t }: Props) {
 
     (async () => {
       try {
-        const maplibre = await import("maplibre-gl");
+        const maplibre = await loadMapLibre();
         if (cancelled || !box.current) return;
-        // Served from /public by scripts/copy-maplibre-worker.mjs.
-        maplibre.setWorkerUrl("/maplibre-gl-worker.mjs");
         instance = new maplibre.Map({
           container: box.current,
           style: mapStyle(),
@@ -59,13 +58,15 @@ export default function LocationPicker({ value, onChange, t }: Props) {
             [KUWAIT_BOUNDS.west, KUWAIT_BOUNDS.south],
             [KUWAIT_BOUNDS.east, KUWAIT_BOUNDS.north],
           ],
-          attributionControl: { compact: true },
+          // Added below at the top so it never sits under "Use my location".
+          attributionControl: false,
           // Pitch and rotation only confuse people placing a pin.
           pitchWithRotate: false,
           dragRotate: false,
           touchPitch: false,
         });
         instance.touchZoomRotate.disableRotation();
+        instance.addControl(new maplibre.AttributionControl({ compact: true }), "top-left");
         instance.addControl(
           new maplibre.NavigationControl({ showCompass: false }),
           "top-right",

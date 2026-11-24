@@ -44,6 +44,29 @@ export const STATUSES = [
 ] as const;
 export type ProjectStatus = (typeof STATUSES)[number];
 
+/** Statuses visible to the public (explorer, listings). */
+export const PUBLIC_STATUSES = [
+  "open_for_signatures",
+  "open_for_design",
+  "sponsorship",
+  "submitted_to_authority",
+  "in_progress",
+  "completed",
+] as const satisfies readonly ProjectStatus[];
+export type PublicStatus = (typeof PUBLIC_STATUSES)[number];
+export const isPublicStatus = (s: ProjectStatus): s is PublicStatus =>
+  (PUBLIC_STATUSES as readonly string[]).includes(s);
+
+/** Marker colours, readable on light and dark basemaps (white outline). */
+export const STATUS_COLORS: Record<PublicStatus, string> = {
+  open_for_signatures: "#c8501e",
+  open_for_design: "#6b4fbb",
+  sponsorship: "#b7791f",
+  submitted_to_authority: "#2f6fb0",
+  in_progress: "#138a72",
+  completed: "#2e7d32",
+};
+
 // ---------------------------------------------------------------------------
 // Geography. Reports must be inside Kuwait (rough bounding box).
 // ---------------------------------------------------------------------------
@@ -120,6 +143,9 @@ export type Project = {
   photos: string[];
   createdAt: string;
 };
+
+/** A project as listed publicly, with its signature count. */
+export type ProjectSummary = Project & { signatures: number };
 
 export const photoUrl = (id: string) => `/api/uploads/${id}`;
 export const projectPath = (lang: string, code: string) => `/${lang}/p/${code}`;

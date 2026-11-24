@@ -27,6 +27,12 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
         >
           {t.home.cta}
         </Link>
+        <Link
+          href={`/${lang}/explore`}
+          className="grid min-h-14 place-items-center rounded-full border border-line bg-surface px-8 text-lg font-medium sm:self-start"
+        >
+          {t.explore.nav}
+        </Link>
       </section>
 
       <p className="text-sm text-muted">{t.home.note}</p>

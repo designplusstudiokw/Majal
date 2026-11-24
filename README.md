@@ -10,6 +10,11 @@ npm run dev        # http://localhost:3000  (Arabic by default, /en for English)
 ```
 
 Reports are stored locally in `.data/` (JSON file + `uploads/`). Delete the folder to reset.
+`npm run seed` fills it with sample projects around Salmiya so the explorer has something to show.
+
+## Explorer
+
+`/ar/explore`: public projects on a map and in a list, filtered by status and problem (filters drive both). Markers are real buttons, so they work with a keyboard and screen reader. Pending and rejected reports never appear.
 
 ## Signing and admin
 
@@ -36,4 +41,6 @@ Reports are stored locally in `.data/` (JSON file + `uploads/`). Delete the fold
 - `src/lib/sms/` is the seam for a real SMS provider (Twilio, Vonage, Unifonic…). Only the dev stand-in exists.
 - Rate limits are in memory (single server). Move them to a shared store before running more than one instance.
 - When moving to Supabase, its phone auth can replace `src/lib/otp.ts` and the session cookie.
-- Not built yet: explorer map, share previews (OG images), PWA icons, address search, the design-proposal and sponsor stages.
+- MapLibre's CSS is imported into a cascade layer (`globals.css`); unlayered, it overrides Tailwind and collapses maps to zero height.
+- The explorer uses one HTML marker per project. Past a few hundred projects, switch to a clustered GeoJSON layer (needs a style with glyphs for count labels).
+- Not built yet: share previews (OG images), PWA icons, address search, the design-proposal and sponsor stages.

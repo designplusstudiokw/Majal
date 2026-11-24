@@ -2,7 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Project, ReportInput } from "@/lib/domain";
+import { isPublicStatus, type Project, type ReportInput } from "@/lib/domain";
 import type { NewPhoto, OtpRecord, Repository } from "./types";
 
 /**
@@ -106,6 +106,16 @@ export const localRepository: Repository = {
   async listProjects() {
     const db = await load();
     return [...db.projects].reverse();
+  },
+
+  async listPublicProjects() {
+    const db = await load();
+    const counts = new Map<string, number>();
+    for (const s of db.signatures) counts.set(s.projectCode, (counts.get(s.projectCode) ?? 0) + 1);
+    return db.projects
+      .filter((p) => isPublicStatus(p.status))
+      .reverse()
+      .map((p) => ({ ...p, signatures: counts.get(p.code) ?? 0 }));
   },
 
   async setProjectStatus(code, status) {

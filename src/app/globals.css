@@ -1,5 +1,8 @@
 @import "tailwindcss";
-@import "maplibre-gl/dist/maplibre-gl.css";
+/* In a cascade layer so Tailwind utilities win: unlayered, its
+   ".maplibregl-map { position: relative }" beat our "absolute inset-0"
+   and collapsed every map to zero height. */
+@import "maplibre-gl/dist/maplibre-gl.css" layer(components);
 
 :root {
   --background: #f6f5f2;
@@ -56,4 +59,25 @@ body {
 /* Keep the pin tip, not its centre, on the map centre. */
 .map-pin {
   transform: translate(-50%, -100%);
+}
+
+/* Explorer map markers (buttons, coloured by status via --marker) */
+.explorer-marker {
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: var(--marker);
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+  cursor: pointer;
+  transition: width 120ms, height 120ms;
+}
+.explorer-marker[hidden] {
+  display: none;
+}
+.explorer-marker[data-selected="true"] {
+  width: 32px;
+  height: 32px;
+  box-shadow: 0 0 0 4px rgb(0 0 0 / 0.25), 0 2px 6px rgb(0 0 0 / 0.4);
+  z-index: 2;
 }

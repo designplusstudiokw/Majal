@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { OTP_LENGTH, normalizeKuwaitPhone } from "@/lib/domain";
 import { fmt } from "@/i18n/fmt";
+import { signatureCountText } from "@/i18n/signature-count";
 import type { Dictionary } from "@/i18n/get-dictionary";
 
 type Props = {
@@ -113,7 +114,7 @@ export default function SignPanel({ code, target, initialCount, alreadySigned, s
     <section className="grid gap-4 rounded-2xl border border-line bg-surface p-4">
       <div>
         <p className="font-semibold" aria-live="polite">
-          {fmt(t.count, { n: count, target })}
+          {signatureCountText(t, count, target)}
         </p>
         <div
           role="progressbar"

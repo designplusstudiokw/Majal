@@ -1,4 +1,4 @@
-import type { Project, ProjectStatus, ReportInput } from "@/lib/domain";
+import type { Project, ProjectStatus, ProjectSummary, ReportInput } from "@/lib/domain";
 
 export type NewPhoto = { bytes: Uint8Array; contentType: string };
 
@@ -20,6 +20,8 @@ export interface Repository {
   createProject(input: ReportInput, photos: NewPhoto[]): Promise<Project>;
   getProjectByCode(code: string): Promise<Project | null>;
   listProjects(): Promise<Project[]>;
+  /** Publicly visible projects with signature counts, in one query. */
+  listPublicProjects(): Promise<ProjectSummary[]>;
   setProjectStatus(code: string, status: ProjectStatus): Promise<Project | null>;
   /** Returns null when the photo does not exist. */
   readPhoto(id: string): Promise<NewPhoto | null>;
