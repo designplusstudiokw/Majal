@@ -21,15 +21,16 @@ export type NewProject = ReportInput & {
 
 export type NewPhoto = { bytes: Uint8Array; contentType: string };
 
-/** One-time-code state for a phone number (keyed by phone hash). */
-export type OtpRecord = {
-  /** Null once used or invalidated. */
-  codeHash: string | null;
-  expiresAt: number;
-  attempts: number;
-  /** Send times (ms) within the rate-limit window. */
-  recentSends: number[];
+export type OtpRules = {
+  ttlMs: number;
+  cooldownMs: number;
+  windowMs: number;
+  maxSends: number;
 };
+export type OtpRequestResult =
+  | { ok: true }
+  | { ok: false; error: "cooldown" | "limit"; retryAfter?: number };
+export type OtpVerifyResult = "ok" | "invalid" | "expired" | "locked";
 
 /**
  * Everything the app needs from storage. Today it is backed by a local JSON
@@ -61,6 +62,9 @@ export interface Repository {
   getScanState(): Promise<{ cursor: number; runs: ScanRun[] }>;
   setScanState(state: { cursor: number; runs: ScanRun[] }): Promise<void>;
 
-  /** Atomic read-modify-write so concurrent guesses cannot beat the attempt limit. */
-  mutateOtp(phoneHash: string, fn: (current: OtpRecord | null) => OtpRecord): Promise<OtpRecord>;
+  /** Store a new code unless the resend cooldown or send limit applies.
+   *  Must be atomic per phone so concurrent requests cannot bypass limits. */
+  otpRequest(phoneHash: string, codeHash: string, now: number, rules: OtpRules): Promise<OtpRequestResult>;
+  /** Check a code; single use; void after maxAttempts wrong guesses. Atomic per phone. */
+  otpVerify(phoneHash: string, codeHash: string, now: number, maxAttempts: number): Promise<OtpVerifyResult>;
 }

@@ -3,7 +3,16 @@ import { randomBytes } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { isPublicStatus, type Project, type ScanRun, type Signal } from "@/lib/domain";
-import type { NewPhoto, NewProject, OtpRecord, Repository } from "./types";
+import type { NewPhoto, NewProject, Repository } from "./types";
+import { safeEqual } from "@/lib/security";
+
+/** One-time-code state for a phone number (keyed by phone hash). */
+type OtpRecord = {
+  codeHash: string | null;
+  expiresAt: number;
+  attempts: number;
+  recentSends: number[];
+};
 
 /**
  * Local development store: one JSON file plus an uploads folder under .data/.
@@ -231,13 +240,55 @@ export const localRepository: Repository = {
     });
   },
 
-  async mutateOtp(phoneHash, fn) {
+  async otpRequest(phoneHash, codeHash, now, rules) {
     return exclusive(async () => {
       const db = await load();
-      const next = fn(db.otps[phoneHash] ?? null);
-      db.otps[phoneHash] = next;
+      const current = db.otps[phoneHash];
+      const recent = (current?.recentSends ?? []).filter((t) => now - t < rules.windowMs);
+      const last = recent[recent.length - 1];
+      if (last !== undefined && now - last < rules.cooldownMs) {
+        db.otps[phoneHash] = { ...(current ?? { codeHash: null, expiresAt: 0, attempts: 0 }), recentSends: recent };
+        await save(db);
+        return { ok: false, error: "cooldown", retryAfter: Math.ceil((rules.cooldownMs - (now - last)) / 1000) } as const;
+      }
+      if (recent.length >= rules.maxSends) {
+        db.otps[phoneHash] = { ...(current ?? { codeHash: null, expiresAt: 0, attempts: 0 }), recentSends: recent };
+        await save(db);
+        return { ok: false, error: "limit" } as const;
+      }
+      db.otps[phoneHash] = { codeHash, expiresAt: now + rules.ttlMs, attempts: 0, recentSends: [...recent, now] };
       await save(db);
-      return next;
+      return { ok: true } as const;
+    });
+  },
+
+  async otpVerify(phoneHash, codeHash, now, maxAttempts) {
+    return exclusive(async () => {
+      const db = await load();
+      const r = db.otps[phoneHash];
+      if (!r || !r.codeHash) return "invalid" as const;
+      const finish = async (result: "ok" | "invalid" | "expired" | "locked") => {
+        await save(db);
+        return result;
+      };
+      if (now > r.expiresAt) {
+        r.codeHash = null;
+        return finish("expired");
+      }
+      if (r.attempts >= maxAttempts) {
+        r.codeHash = null;
+        return finish("locked");
+      }
+      if (safeEqual(r.codeHash, codeHash)) {
+        r.codeHash = null; // single use
+        return finish("ok");
+      }
+      r.attempts += 1;
+      if (r.attempts >= maxAttempts) {
+        r.codeHash = null;
+        return finish("locked");
+      }
+      return finish("invalid");
     });
   },
 

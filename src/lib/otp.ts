@@ -2,15 +2,16 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import { OTP_LENGTH } from "@/lib/domain";
 import { repo } from "@/lib/repo";
-import type { OtpRecord } from "@/lib/repo/types";
 import { getSmsProvider } from "@/lib/sms";
-import { hashPhone, hmac, safeEqual, secret } from "@/lib/security";
+import { hashPhone, hmac, secret } from "@/lib/security";
 
-const CODE_TTL_MS = 5 * 60_000;
-const RESEND_COOLDOWN_MS = 30_000;
-const WINDOW_MS = 10 * 60_000;
-const MAX_SENDS_PER_WINDOW = 3;
-const MAX_ATTEMPTS = 5;
+export const OTP_RULES = {
+  ttlMs: 5 * 60_000, // a code is valid for 5 minutes
+  cooldownMs: 30_000, // wait 30 s before asking for another
+  windowMs: 10 * 60_000, // at most maxSends codes per 10 minutes
+  maxSends: 3,
+  maxAttempts: 5, // wrong guesses before the code is void
+};
 
 const codeHash = (phoneHash: string, code: string) =>
   hmac(secret("PHONE_HASH_SECRET"), `otp:${phoneHash}:${code}`);
@@ -24,30 +25,10 @@ export async function requestCode(phoneE164: string): Promise<RequestResult> {
   const phoneHash = hashPhone(phoneE164);
   const code =
     sms.fixedCode ?? String(randomInt(0, 10 ** OTP_LENGTH)).padStart(OTP_LENGTH, "0");
-  const now = Date.now();
-  let blocked: RequestResult | null = null;
 
-  await repo.mutateOtp(phoneHash, (current) => {
-    const recent = (current?.recentSends ?? []).filter((t) => now - t < WINDOW_MS);
-    const last = recent[recent.length - 1];
-    if (last && now - last < RESEND_COOLDOWN_MS) {
-      blocked = {
-        ok: false,
-        error: "cooldown",
-        retryAfter: Math.ceil((RESEND_COOLDOWN_MS - (now - last)) / 1000),
-      };
-    } else if (recent.length >= MAX_SENDS_PER_WINDOW) {
-      blocked = { ok: false, error: "limit" };
-    }
-    if (blocked) return current ?? { codeHash: null, expiresAt: 0, attempts: 0, recentSends: recent };
-    return {
-      codeHash: codeHash(phoneHash, code),
-      expiresAt: now + CODE_TTL_MS,
-      attempts: 0,
-      recentSends: [...recent, now],
-    };
-  });
-  if (blocked) return blocked;
+  // The store applies the cooldown and send limit atomically.
+  const stored = await repo.otpRequest(phoneHash, codeHash(phoneHash, code), Date.now(), OTP_RULES);
+  if (!stored.ok) return stored;
 
   try {
     await sms.send(phoneE164, `Majal: your code is ${code}`);
@@ -63,27 +44,6 @@ export type VerifyResult =
 
 export async function verifyCode(phoneE164: string, code: string): Promise<VerifyResult> {
   const phoneHash = hashPhone(phoneE164);
-  const now = Date.now();
-  let result: VerifyResult = { ok: false, error: "invalid" };
-
-  await repo.mutateOtp(phoneHash, (current): OtpRecord => {
-    const empty: OtpRecord = { codeHash: null, expiresAt: 0, attempts: 0, recentSends: [] };
-    if (!current || !current.codeHash) return current ?? empty;
-    if (now > current.expiresAt) {
-      result = { ok: false, error: "expired" };
-      return { ...current, codeHash: null };
-    }
-    if (current.attempts >= MAX_ATTEMPTS) {
-      result = { ok: false, error: "locked" };
-      return { ...current, codeHash: null };
-    }
-    if (safeEqual(current.codeHash, codeHash(phoneHash, code))) {
-      result = { ok: true, phoneHash };
-      return { ...current, codeHash: null }; // single use
-    }
-    const attempts = current.attempts + 1;
-    if (attempts >= MAX_ATTEMPTS) result = { ok: false, error: "locked" };
-    return { ...current, attempts, codeHash: attempts >= MAX_ATTEMPTS ? null : current.codeHash };
-  });
-  return result;
+  const result = await repo.otpVerify(phoneHash, codeHash(phoneHash, code), Date.now(), OTP_RULES.maxAttempts);
+  return result === "ok" ? { ok: true, phoneHash } : { ok: false, error: result };
 }

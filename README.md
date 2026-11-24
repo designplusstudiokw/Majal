@@ -9,7 +9,7 @@ npm install
 npm run dev        # http://localhost:3000  (Arabic by default, /en for English)
 ```
 
-Reports are stored locally in `.data/` (JSON file + `uploads/`). Delete the folder to reset.
+Without Supabase settings, development stores everything locally in `.data/` (JSON file + `uploads/`); delete the folder to reset. With `SUPABASE_URL` and `SUPABASE_SECRET_KEY` set, the app uses Supabase (see below).
 `npm run seed` fills it with sample projects around Salmiya so the explorer has something to show.
 
 ## Place search (report map)
@@ -56,12 +56,19 @@ Claude searches the web for recent complaints about public places in Kuwait, in 
 - A signed cookie keeps a verified person signed in for 90 days, so they can sign other projects without a new code.
 - Production needs real secrets and an SMS provider: copy `.env.example`. The app refuses to start signing in production without them (no silent weak defaults).
 
+## Database (Supabase)
+
+- Schema: `supabase/migrations/` (tables, PostGIS location, functions, private `photos` bucket). Apply with the Supabase CLI (`supabase db push`) or the dashboard's SQL editor.
+- Access model: only the app's server talks to Supabase, with the secret key. Row level security is on for every table with no public policies, and the functions are revoked from `anon`/`authenticated`, so the public key can read or call nothing.
+- Atomic steps run inside the database: project numbering (`create_projects`), and one-time codes (`otp_request`, `otp_verify` lock the row, so concurrent requests cannot beat the cooldown or attempt limit).
+- Photos are private and served through `/api/uploads/...`, so a moderator can withdraw one.
+
 ## Structure
 
 - `src/app/[lang]/…`: pages (Arabic/English, RTL handled in the root layout)
 - `src/app/api/reports`: `POST` multipart endpoint (the future mobile app can reuse it)
 - `src/lib/domain.ts`: vocabulary (problems, fixes, statuses), validation, Kuwait bounds
-- `src/lib/repo/`: storage behind a `Repository` interface. `local.ts` is the dev store; add a Supabase implementation and select it in `index.ts`
+- `src/lib/repo/`: storage behind a `Repository` interface: `supabase.ts` (production) and `local.ts` (development), selected in `index.ts`
 - `src/i18n/`: dictionaries (plain strings so they can be passed to client components)
 - `src/proxy.ts`: redirects unprefixed links, e.g. plaque short link `/p/P-0001` → `/ar/p/P-0001`
 
@@ -72,7 +79,6 @@ Claude searches the web for recent complaints about public places in Kuwait, in 
 - Basemap defaults to OpenStreetMap raster tiles (development only). Set `NEXT_PUBLIC_MAP_STYLE` to a style URL for production. PACI basemap needs written permission first.
 - `src/lib/sms/` is the seam for a real SMS provider (Twilio, Vonage, Unifonic…). Only the dev stand-in exists.
 - Rate limits are in memory (single server). Move them to a shared store before running more than one instance.
-- When moving to Supabase, its phone auth can replace `src/lib/otp.ts` and the session cookie.
 - MapLibre's CSS is imported into a cascade layer (`globals.css`); unlayered, it overrides Tailwind and collapses maps to zero height.
 - The explorer uses one HTML marker per project. Past a few hundred projects, switch to a clustered GeoJSON layer (needs a style with glyphs for count labels).
 - Branding is typographic until the logo arrives: `src/components/Wordmark.tsx` (headers) and `src/lib/brand-icon.tsx` (app icons, IBM Plex Sans Arabic Bold on a steel plate). Swap those two files for the logo.
