@@ -18,13 +18,15 @@ type Props = {
   value: LatLng;
   onChange: (p: LatLng) => void;
   t: Dictionary["report"]["location"];
+  /** Prefill the search box (e.g. a place named in a signal). */
+  initialQuery?: string;
 };
 
 /**
  * Food-delivery style picker: the pin stays fixed in the middle of the map and
  * the user moves the map beneath it. "Use my location" is a shortcut only.
  */
-export default function LocationPicker({ lang, value, onChange, t }: Props) {
+export default function LocationPicker({ lang, value, onChange, t, initialQuery }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const onChangeRef = useRef(onChange);
@@ -38,7 +40,7 @@ export default function LocationPicker({ lang, value, onChange, t }: Props) {
     | { state: "ok"; accuracy: number }
   >({ state: "idle" });
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [search, setSearch] = useState<
     | { state: "idle" }
     | { state: "loading" }

@@ -2,7 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isPublicStatus, type Project } from "@/lib/domain";
+import { isPublicStatus, type Project, type ScanRun, type Signal } from "@/lib/domain";
 import type { NewPhoto, NewProject, OtpRecord, Repository } from "./types";
 
 /**
@@ -16,6 +16,8 @@ type Db = {
   projects: Project[];
   signatures: Signature[];
   otps: Record<string, OtpRecord>;
+  signals: Signal[];
+  scan: { cursor: number; runs: ScanRun[] };
 };
 
 const DATA_DIR = path.resolve(/*turbopackIgnore: true*/ process.env.DATA_DIR ?? ".data");
@@ -47,10 +49,12 @@ async function load(): Promise<Db> {
       })),
       signatures: db.signatures ?? [],
       otps: db.otps ?? {},
+      signals: db.signals ?? [],
+      scan: db.scan ?? { cursor: 0, runs: [] },
     };
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
-      return { counter: 0, projects: [], signatures: [], otps: {} };
+      return { counter: 0, projects: [], signatures: [], otps: {}, signals: [], scan: { cursor: 0, runs: [] } };
     }
     throw e;
   }
@@ -174,6 +178,57 @@ export const localRepository: Repository = {
     const db = await load();
     const projectCode = code.toUpperCase();
     return db.signatures.filter((s) => s.projectCode === projectCode).length;
+  },
+
+  async addSignals(items) {
+    return exclusive(async () => {
+      const db = await load();
+      const seen = new Set(db.signals.map((s) => s.urlKey));
+      const added: Signal[] = [];
+      for (const item of items) {
+        if (seen.has(item.urlKey)) continue;
+        seen.add(item.urlKey);
+        const signal = { ...item, id: randomBytes(8).toString("hex") };
+        db.signals.push(signal);
+        added.push(signal);
+      }
+      if (added.length) await save(db);
+      return added;
+    });
+  },
+
+  async listSignals(status) {
+    const db = await load();
+    return db.signals.filter((s) => !status || s.status === status).reverse();
+  },
+
+  async getSignal(id) {
+    const db = await load();
+    return db.signals.find((s) => s.id === id) ?? null;
+  },
+
+  async setSignalStatus(id, status, projectCode) {
+    return exclusive(async () => {
+      const db = await load();
+      const signal = db.signals.find((s) => s.id === id);
+      if (!signal) return null;
+      signal.status = status;
+      signal.projectCode = projectCode ?? signal.projectCode;
+      await save(db);
+      return signal;
+    });
+  },
+
+  async getScanState() {
+    return (await load()).scan;
+  },
+
+  async setScanState(state) {
+    await exclusive(async () => {
+      const db = await load();
+      db.scan = state;
+      await save(db);
+    });
   },
 
   async mutateOtp(phoneHash, fn) {

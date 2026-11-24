@@ -116,6 +116,84 @@ export function normalizeKuwaitPhone(input: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Signals: complaints found online by the monitoring job, for team review
+// ---------------------------------------------------------------------------
+
+/** Languages residents of Kuwait post in. The scan rotates through these. */
+export const SIGNAL_LANGUAGES = {
+  ar: "Arabic",
+  en: "English",
+  ur: "Urdu",
+  hi: "Hindi",
+  tl: "Filipino (Tagalog)",
+  ml: "Malayalam",
+  bn: "Bengali",
+  ta: "Tamil",
+  si: "Sinhala",
+  ne: "Nepali",
+} as const;
+export type SignalLanguage = keyof typeof SIGNAL_LANGUAGES;
+export const SIGNAL_LANGUAGE_KEYS = Object.keys(SIGNAL_LANGUAGES) as SignalLanguage[];
+
+export const SIGNAL_STATUSES = ["new", "dismissed", "converted"] as const;
+export type SignalStatus = (typeof SIGNAL_STATUSES)[number];
+
+export type Signal = {
+  id: string;
+  /** Normalised URL used to avoid saving the same post twice. */
+  urlKey: string;
+  url: string;
+  sourceName: string;
+  /** ISO date if the source shows one. */
+  published: string | null;
+  /** Language the post is written in (ISO 639-1). */
+  language: string;
+  /** Short quote in the original language, never with names or handles. */
+  excerpt: string;
+  summaryAr: string;
+  summaryEn: string;
+  problem: ProblemKey;
+  theme: ThemeKey | null;
+  area: string | null;
+  locationHint: string | null;
+  confidence: "high" | "medium" | "low";
+  foundAt: string;
+  /** "scan:<lang>" or "intake". */
+  via: string;
+  status: SignalStatus;
+  projectCode: string | null;
+};
+
+export type ScanRun = {
+  at: string;
+  languages: string[];
+  found: number;
+  added: number;
+  searches: number;
+  inputTokens: number;
+  outputTokens: number;
+  errors: string[];
+};
+
+/** Strip tracking parameters, fragments and "www." so one post has one key. */
+export function urlKey(raw: string): string | null {
+  try {
+    const u = new URL(raw.trim());
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    u.hash = "";
+    for (const k of [...u.searchParams.keys()]) {
+      if (/^(utm_|fbclid|gclid|igshid|si$|s$|ref$|ref_src$)/i.test(k)) u.searchParams.delete(k);
+    }
+    const host = u.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
+    const path = u.pathname.replace(/\/+$/, "");
+    const query = u.searchParams.toString();
+    return `${host}${path}${query ? `?${query}` : ""}`;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Photos
 // ---------------------------------------------------------------------------
 

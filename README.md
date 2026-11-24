@@ -38,6 +38,16 @@ The team can publish common, easy-to-spot gaps as **suggestions**, grouped in co
 - Starting list from OpenStreetMap: `node scripts/osm-candidates.mjs --area Salmiya --label "السالمية" --type school` (or `kindergarten`) writes a draft CSV of mapped schools or kindergartens. Pins are building centres: move each to the real crossing, rewrite titles as needed, then import. OpenStreetMap coverage in Kuwait is incomplete, so treat it as a head start, not a census.
 - Collections are linkable: `/ar/explore?theme=school_crossing`. The home page lists collections that have places.
 
+## Online monitoring (Signals)
+
+Claude searches the web for recent complaints about public places in Kuwait, in the languages residents post in (Arabic, English, Urdu, Hindi, Filipino, Malayalam, Bengali, Tamil, Sinhala, Nepali), and puts each finding in **admin > Signals** for review. Nothing is published automatically: the team dismisses a signal or turns it into a curated suggestion (the form opens pre-filled; place the pin, then save).
+
+- How it works: `src/lib/signals/claude.ts`. One Messages API request per language with Anthropic's server-side web search (`web_search_20260209`, located in Kuwait); Claude writes its own queries in that language and returns findings through a strict `report_findings` tool. Findings are validated again, deduplicated by normalised URL, and posts older than 14 days are dropped. Authors' names and handles are never stored.
+- Schedule: call `GET /api/cron/signals` with `Authorization: Bearer $CRON_SECRET` (Vercel Cron sends this header automatically when `CRON_SECRET` is set; a GitHub Actions `curl` works too). Each call scans the next `SIGNALS_LANGUAGES_PER_RUN` languages. Check your host's cron frequency and function time limits; a call can take a few minutes.
+- Manual: "Scan now" runs the next step; "Add a link or post" reads one link (via web fetch) or pasted text. Instagram, X and Facebook usually block fetching, so paste the text for those. WhatsApp forwards always need pasting.
+- Cost: each language scan bills web searches plus tokens. The Signals page shows searches and tokens for every run, so set the schedule from real numbers. Start with each language once a day.
+- Safety: page content is treated as data (the prompt says so, and the only output is the schema); a refused request is logged and the run continues; the API's server-side fallback is enabled for safety declines.
+
 ## Signing and admin
 
 - Review queue: `/ar/admin` (dev password `majal-admin`). Approving a report opens it for signatures.

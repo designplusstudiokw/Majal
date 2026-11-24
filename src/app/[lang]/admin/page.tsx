@@ -47,6 +47,9 @@ async function Queue({ lang }: { lang: string }) {
           <Link href={`/${lang}/admin/import`} className="rounded-full border border-line px-4 py-2 text-sm font-medium">
             Import spreadsheet
           </Link>
+          <Link href={`/${lang}/admin/signals`} className="rounded-full border border-line px-4 py-2 text-sm font-medium">
+            Signals
+          </Link>
         </div>
       </div>
 

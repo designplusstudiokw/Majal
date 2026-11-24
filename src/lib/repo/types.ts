@@ -4,6 +4,9 @@ import type {
   ProjectStatus,
   ProjectSummary,
   ReportInput,
+  ScanRun,
+  Signal,
+  SignalStatus,
   ThemeKey,
 } from "@/lib/domain";
 
@@ -48,6 +51,15 @@ export interface Repository {
   addSignature(code: string, phoneHash: string): Promise<{ created: boolean }>;
   hasSigned(code: string, phoneHash: string): Promise<boolean>;
   countSignatures(code: string): Promise<number>;
+
+  /** Signals from online monitoring. addSignals skips URLs already saved. */
+  addSignals(signals: Omit<Signal, "id">[]): Promise<Signal[]>;
+  listSignals(status?: SignalStatus): Promise<Signal[]>;
+  getSignal(id: string): Promise<Signal | null>;
+  setSignalStatus(id: string, status: SignalStatus, projectCode?: string): Promise<Signal | null>;
+  /** Which languages the next scan covers, and recent run logs. */
+  getScanState(): Promise<{ cursor: number; runs: ScanRun[] }>;
+  setScanState(state: { cursor: number; runs: ScanRun[] }): Promise<void>;
 
   /** Atomic read-modify-write so concurrent guesses cannot beat the attempt limit. */
   mutateOtp(phoneHash: string, fn: (current: OtpRecord | null) => OtpRecord): Promise<OtpRecord>;

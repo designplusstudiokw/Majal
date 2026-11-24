@@ -16,5 +16,9 @@ export async function POST(request: Request) {
     return Response.json({ error: "validation", fields: parsed.error.flatten().fieldErrors }, { status: 422 });
   }
   const [project] = await repo.createProjects([toNewProject(parsed.data)]);
+  // Created from a signal in the inbox: mark it as handled.
+  if (typeof body.signalId === "string") {
+    await repo.setSignalStatus(body.signalId, "converted", project.code);
+  }
   return Response.json({ code: project.code }, { status: 201 });
 }

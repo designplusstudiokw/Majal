@@ -8,6 +8,8 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 
 type Props = {
   lang: string;
+  /** Prefill from a signal in the inbox. */
+  initial?: { signalId: string; theme?: ThemeKey; area: string; title: string; description: string; search: string };
   t: Pick<Dictionary, "themes" | "fixes"> & { location: Dictionary["report"]["location"] };
 };
 
@@ -15,11 +17,12 @@ const field = "w-full rounded-xl border border-line bg-surface px-3 py-2.5";
 
 /** Add one curated suggestion. Theme, area and map position are kept after
  *  saving, so several points in the same area are quick to enter. */
-export default function SuggestionForm({ lang, t }: Props) {
-  const [theme, setTheme] = useState<ThemeKey>("school_crossing");
-  const [area, setArea] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+export default function SuggestionForm({ lang, t, initial }: Props) {
+  const [theme, setTheme] = useState<ThemeKey>(initial?.theme ?? "school_crossing");
+  const [area, setArea] = useState(initial?.area ?? "");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [signalId, setSignalId] = useState(initial?.signalId);
   const [fix, setFix] = useState<FixKey | "">("");
   const [pin, setPin] = useState<LatLng>(DEFAULT_CENTER);
   const [busy, setBusy] = useState(false);
@@ -34,7 +37,7 @@ export default function SuggestionForm({ lang, t }: Props) {
       const res = await fetch("/api/admin/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme, area, title, description, fix: fix || undefined, lat: pin.lat, lng: pin.lng }),
+        body: JSON.stringify({ theme, area, title, description, fix: fix || undefined, lat: pin.lat, lng: pin.lng, signalId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -43,6 +46,7 @@ export default function SuggestionForm({ lang, t }: Props) {
         return;
       }
       setSaved((s) => [data.code, ...s]);
+      setSignalId(undefined); // the signal is handled; later saves are new places
       setTitle("");
       setDescription("");
       setFix("");
@@ -107,7 +111,7 @@ export default function SuggestionForm({ lang, t }: Props) {
         )}
       </div>
       <div className="h-[60dvh] md:h-auto md:min-h-[520px]">
-        <LocationPicker lang={lang} value={pin} onChange={setPin} t={t.location} />
+        <LocationPicker lang={lang} value={pin} onChange={setPin} t={t.location} initialQuery={initial?.search} />
       </div>
     </form>
   );
