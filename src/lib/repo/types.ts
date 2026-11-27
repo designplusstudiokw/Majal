@@ -71,6 +71,9 @@ export interface Repository {
   getScanState(): Promise<{ cursor: number; runs: ScanRun[] }>;
   setScanState(state: { cursor: number; runs: ScanRun[] }): Promise<void>;
 
+  /** Count one hit for `key`; false once it is over `limit` in the window. */
+  rateLimit(key: string, limit: number, windowMs: number): Promise<boolean>;
+
   /** Store a new code unless the resend cooldown or send limit applies.
    *  Must be atomic per phone so concurrent requests cannot bypass limits. */
   otpRequest(phoneHash: string, codeHash: string, now: number, rules: OtpRules): Promise<OtpRequestResult>;

@@ -1,11 +1,10 @@
 import { cookies } from "next/headers";
 import { normalizeKuwaitPhone } from "@/lib/domain";
 import { verifyCode } from "@/lib/otp";
-import { rateLimit } from "@/lib/rate-limit";
+import { allow } from "@/lib/rate-limit";
 import {
   SESSION_COOKIE,
   SESSION_TTL,
-  clientIp,
   isHttps,
   makeSession,
   readJson,
@@ -21,7 +20,7 @@ export async function POST(request: Request) {
   if (!phone || !/^\d{6}$/.test(code)) {
     return Response.json({ error: "invalid" }, { status: 422 });
   }
-  if (!rateLimit(`verify-ip:${clientIp(request)}`, 60, 60 * 60_000)) {
+  if (!(await allow(request, "otp-verify", 60, 60 * 60_000))) {
     return Response.json({ error: "limit" }, { status: 429 });
   }
 

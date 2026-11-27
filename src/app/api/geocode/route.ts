@@ -1,6 +1,5 @@
 import { searchPlaces } from "@/lib/geocode";
-import { rateLimit } from "@/lib/rate-limit";
-import { clientIp } from "@/lib/security";
+import { allow } from "@/lib/rate-limit";
 
 // GET /api/geocode?q=salmiya&lang=ar
 export async function GET(request: Request) {
@@ -10,7 +9,7 @@ export async function GET(request: Request) {
   if (q.length < 2 || q.length > 100) {
     return Response.json({ error: "bad_query" }, { status: 400 });
   }
-  if (!rateLimit(`geocode-ip:${clientIp(request)}`, 30, 60_000)) {
+  if (!(await allow(request, "geocode", 30, 60_000))) {
     return Response.json({ error: "limit" }, { status: 429 });
   }
   try {

@@ -63,6 +63,12 @@ Claude searches the web for recent complaints about public places in Kuwait, in 
 - Atomic steps run inside the database: project numbering (`create_projects`), and one-time codes (`otp_request`, `otp_verify` lock the row, so concurrent requests cannot beat the cooldown or attempt limit).
 - Photos are private and served through `/api/uploads/...`, so a moderator can withdraw one.
 
+## Abuse protection
+
+- Rate limits are counted in the database (`rate_limit_hit`), keyed by a hash of the visitor's IP (raw IPs are never stored): reports (5/hour, 15/day), code requests, code checks, address search, admin login.
+- Report form: hidden trap field, plus Cloudflare Turnstile when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set (the token is verified server-side).
+- Testing from a sandbox that only reaches the internet through a proxy: start the server with `NODE_USE_ENV_PROXY=1`, or Node's `fetch` cannot reach Cloudflare, Supabase or Claude.
+
 ## Structure
 
 - `src/app/[lang]/…`: pages (Arabic/English, RTL handled in the root layout)
@@ -78,7 +84,6 @@ Claude searches the web for recent complaints about public places in Kuwait, in 
 - MapLibre 6 cannot find its worker once bundled, so `scripts/copy-maplibre-worker.mjs` copies it to `public/` (runs on install/dev/build).
 - Basemap defaults to OpenStreetMap raster tiles (development only). Set `NEXT_PUBLIC_MAP_STYLE` to a style URL for production. PACI basemap needs written permission first.
 - `src/lib/sms/` is the seam for a real SMS provider (Twilio, Vonage, Unifonic…). Only the dev stand-in exists.
-- Rate limits are in memory (single server). Move them to a shared store before running more than one instance.
 - MapLibre's CSS is imported into a cascade layer (`globals.css`); unlayered, it overrides Tailwind and collapses maps to zero height.
 - The explorer uses one HTML marker per project. Past a few hundred projects, switch to a clustered GeoJSON layer (needs a style with glyphs for count labels).
 - Branding is typographic until the logo arrives: `src/components/Wordmark.tsx` (headers) and `src/lib/brand-icon.tsx` (app icons, IBM Plex Sans Arabic Bold on a steel plate). Swap those two files for the logo.

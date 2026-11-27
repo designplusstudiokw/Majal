@@ -1,17 +1,13 @@
 import "server-only";
+import { repo } from "@/lib/repo";
+import { clientIp, hmac, secret } from "@/lib/security";
 
-/** In-memory sliding window. Single process only; use a shared store (Redis,
- *  Supabase) when running more than one server instance. */
-const hits = new Map<string, number[]>();
-
-export function rateLimit(key: string, limit: number, windowMs: number): boolean {
-  const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
-  if (recent.length >= limit) {
-    hits.set(key, recent);
-    return false;
-  }
-  recent.push(now);
-  hits.set(key, recent);
-  return true;
+/**
+ * Per-visitor limits, counted in the shared store (database in production) so
+ * they hold across server instances. Visitors are identified by a keyed hash
+ * of their IP address; raw IPs are never stored.
+ */
+export async function allow(request: Request, name: string, limit: number, windowMs: number) {
+  const who = hmac(secret("SESSION_SECRET"), `ip:${clientIp(request)}`).slice(0, 32);
+  return repo.rateLimit(`${name}:${who}`, limit, windowMs);
 }

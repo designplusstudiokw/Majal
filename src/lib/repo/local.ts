@@ -6,6 +6,7 @@ import { rm } from "node:fs/promises";
 import { isPublicStatus, type ModerationEvent, type Project, type ScanRun, type Signal } from "@/lib/domain";
 import type { NewPhoto, NewProject, Repository } from "./types";
 import { safeEqual } from "@/lib/security";
+import { memoryLimit } from "@/lib/memory-limit";
 
 /** One-time-code state for a phone number (keyed by phone hash). */
 type OtpRecord = {
@@ -280,6 +281,10 @@ export const localRepository: Repository = {
       db.scan = state;
       await save(db);
     });
+  },
+
+  async rateLimit(key, limit, windowMs) {
+    return memoryLimit(key, limit, windowMs);
   },
 
   async otpRequest(phoneHash, codeHash, now, rules) {

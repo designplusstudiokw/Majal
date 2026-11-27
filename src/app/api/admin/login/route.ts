@@ -1,10 +1,9 @@
 import { cookies } from "next/headers";
-import { rateLimit } from "@/lib/rate-limit";
+import { allow } from "@/lib/rate-limit";
 import {
   ADMIN_COOKIE,
   ADMIN_TTL,
   adminPassword,
-  clientIp,
   isHttps,
   makeAdminToken,
   readJson,
@@ -17,7 +16,7 @@ export async function POST(request: Request) {
 
   const body = await readJson(request);
   if (!body) return Response.json({ error: "bad_request" }, { status: 400 });
-  if (!rateLimit(`admin-ip:${clientIp(request)}`, 10, 15 * 60_000)) {
+  if (!(await allow(request, "admin-login", 10, 15 * 60_000))) {
     return Response.json({ error: "limit" }, { status: 429 });
   }
   if (!safeEqual(String(body.password ?? ""), expected)) {

@@ -327,6 +327,12 @@ export const supabaseRepository: Repository = {
     check(await db().from("scan_state").upsert({ id: 1, cursor_pos: state.cursor, runs: state.runs }));
   },
 
+  async rateLimit(key, limit, windowMs) {
+    return check(
+      await db().rpc("rate_limit_hit", { p_key: key, p_window_ms: windowMs, p_limit: limit, p_now: Date.now() }),
+    ) as boolean;
+  },
+
   async otpRequest(phoneHash, codeHash, now, rules): Promise<OtpRequestResult> {
     const res = check(
       await db().rpc("otp_request", {

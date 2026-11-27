@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import LocationPicker, { type LatLng } from "./LocationPicker";
+import Turnstile, { TURNSTILE_SITE_KEY } from "./Turnstile";
 import {
   DEFAULT_CENTER,
   FIX_KEYS,
@@ -40,6 +41,8 @@ export default function ReportWizard({ lang, dict }: Props) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [doneCode, setDoneCode] = useState<string | null>(null);
+  // Human check token (only when Turnstile is configured).
+  const [captcha, setCaptcha] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const photosRef = useRef<Photo[]>([]);
 
@@ -110,7 +113,11 @@ export default function ReportWizard({ lang, dict }: Props) {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(
-          data.error === "photo_too_large"
+          data.error === "limit"
+            ? t.errors.limit
+            : data.error === "captcha"
+            ? t.errors.captcha
+            : data.error === "photo_too_large"
             ? t.errors.photoTooLarge
             : data.error === "photo_type"
               ? t.errors.photoType
@@ -385,6 +392,7 @@ export default function ReportWizard({ lang, dict }: Props) {
               )}
             </dl>
             <p className="text-sm text-muted">{t.review.moderationNote}</p>
+            <Turnstile lang={lang} onToken={setCaptcha} />
             {error && (
               <p role="alert" className="text-danger">
                 {error}
@@ -413,7 +421,12 @@ export default function ReportWizard({ lang, dict }: Props) {
         ) : (
           // Distinct key: otherwise React reuses the "next" button element and
           // the click that moved to this step also submits the form.
-          <button key="submit" type="submit" className={`${primaryBtn} flex-1`} disabled={sending}>
+          <button
+            key="submit"
+            type="submit"
+            className={`${primaryBtn} flex-1`}
+            disabled={sending || (Boolean(TURNSTILE_SITE_KEY) && !captcha)}
+          >
             {sending ? t.submitting : t.submit}
           </button>
         )}

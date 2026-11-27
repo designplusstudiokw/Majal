@@ -67,6 +67,8 @@ export const en = {
         "A moderator will review your report before it opens for signatures.",
     },
     errors: {
+      limit: "You have sent several reports in a short time. Please try again later.",
+      captcha: "The security check did not pass. Please try again.",
       title: "Please enter a title of at least 5 characters.",
       description: "Please describe the problem in at least 10 characters.",
       photoType: "Only JPG, PNG or WebP photos are accepted.",

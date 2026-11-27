@@ -1,7 +1,7 @@
 import { normalizeKuwaitPhone } from "@/lib/domain";
 import { requestCode } from "@/lib/otp";
-import { rateLimit } from "@/lib/rate-limit";
-import { clientIp, readJson } from "@/lib/security";
+import { allow } from "@/lib/rate-limit";
+import { readJson } from "@/lib/security";
 
 // POST /api/otp/request  { phone }
 export async function POST(request: Request) {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   if (!phone) return Response.json({ error: "phone" }, { status: 422 });
 
   // Every SMS costs money, so also cap what one network can ask for.
-  if (!rateLimit(`otp-ip:${clientIp(request)}`, 15, 60 * 60_000)) {
+  if (!(await allow(request, "otp-request", 15, 60 * 60_000))) {
     return Response.json({ error: "limit" }, { status: 429 });
   }
 
