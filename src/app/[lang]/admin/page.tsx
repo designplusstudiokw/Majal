@@ -59,7 +59,7 @@ async function Queue({ lang }: { lang: string }) {
         {pending.map(({ p }) => (
           <article key={p.code} className="grid gap-3 rounded-2xl border border-line bg-surface p-4">
             <div>
-              <Link href={`/${lang}/p/${p.code}`} className="font-semibold underline">
+              <Link href={`/${lang}/admin/p/${p.code}`} className="font-semibold underline">
                 {p.code}: {p.title}
               </Link>
               <p className="mt-1 text-sm text-muted">
@@ -76,10 +76,11 @@ async function Queue({ lang }: { lang: string }) {
 
       <section className="grid gap-2">
         <h2 className="font-semibold">All other projects ({rest.length})</h2>
+        <p className="text-sm text-muted">Open one to edit it, move it to another stage, remove a photo or hide it.</p>
         {rest.map(({ p, signatures }) => (
           <Link
             key={p.code}
-            href={`/${lang}/p/${p.code}`}
+            href={`/${lang}/admin/p/${p.code}`}
             className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3"
           >
             <span>
@@ -89,7 +90,7 @@ async function Queue({ lang }: { lang: string }) {
               )}
             </span>
             <span className="shrink-0 text-sm text-muted">
-              {p.status.replaceAll("_", " ")} · {signatures}/{SIGNATURE_TARGET}
+              {p.status === "rejected" ? "hidden" : p.status.replaceAll("_", " ")} · {signatures}/{SIGNATURE_TARGET}
             </span>
           </Link>
         ))}

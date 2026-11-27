@@ -12,6 +12,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { repo } from "@/lib/repo";
 import { SESSION_COOKIE, readSession } from "@/lib/security";
 import { SITE_NAME, ogLocale } from "@/lib/site";
+import { isAdmin } from "@/lib/admin-auth";
 import Wordmark from "@/components/Wordmark";
 
 /** What WhatsApp, iMessage, X and others show when the link is shared.
@@ -23,7 +24,8 @@ export async function generateMetadata({
   if (!hasLocale(lang)) return {};
   const t = getDictionary(lang);
   const project = await repo.getProjectByCode(code);
-  if (!project) return { title: t.project.notFound, robots: { index: false } };
+  // Hidden projects must not leak a title or description into link previews.
+  if (!project || project.status === "rejected") return { title: t.project.notFound, robots: { index: false } };
 
   const description = clipText(project.description, 180);
   const path = `/${lang}/p/${project.code}`;
@@ -68,7 +70,12 @@ async function Project({ params }: { params: PageProps<"/[lang]/p/[code]">["para
   const { lang, code } = await params;
   if (!hasLocale(lang)) notFound();
   const t = getDictionary(lang);
-  const project = await repo.getProjectByCode(code);
+  const found = await repo.getProjectByCode(code);
+  // Hidden (rejected) projects look exactly like missing ones to the public;
+  // admins still see them, with a banner.
+  const admin = await isAdmin();
+  const hidden = found?.status === "rejected";
+  const project = hidden && !admin ? null : found;
 
   // Signing state is per visitor, so it is read here, inside the Suspense boundary.
   const phoneHash = readSession((await cookies()).get(SESSION_COOKIE)?.value);
@@ -94,6 +101,12 @@ async function Project({ params }: { params: PageProps<"/[lang]/p/[code]">["para
         </div>
       ) : (
         <article className="grid gap-6 py-8">
+          {hidden && (
+            <p dir="ltr" lang="en" className="rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm">
+              Hidden from the public: visitors see &ldquo;not found&rdquo;. Only admins see this page.{" "}
+              <Link href={`/${lang}/admin/p/${project.code}`} className="underline">Moderate</Link>
+            </p>
+          )}
           <div>
             <p className="text-sm text-muted">
               {t.project.code}{" "}

@@ -215,6 +215,32 @@ export const reportSchema = z.object({
 });
 export type ReportInput = z.infer<typeof reportSchema>;
 
+/** What a moderator may change on a project. Every field is optional. */
+export const projectEditSchema = z
+  .object({
+    title: z.string().trim().min(5).max(120),
+    description: z.string().trim().min(10).max(2000),
+    problem: z.enum(PROBLEM_KEYS),
+    fix: z.enum(FIX_KEYS).nullable(),
+    theme: z.enum(THEME_KEYS).nullable(),
+    area: z.string().trim().max(60).nullable(),
+    lat: z.coerce.number().min(KUWAIT_BOUNDS.south).max(KUWAIT_BOUNDS.north),
+    lng: z.coerce.number().min(KUWAIT_BOUNDS.west).max(KUWAIT_BOUNDS.east),
+    status: z.enum(STATUSES),
+  })
+  .partial()
+  .strict();
+export type ProjectEdit = z.infer<typeof projectEditSchema>;
+
+/** One entry in the moderation log: who did what to which project. */
+export type ModerationEvent = {
+  at: string;
+  actor: string;
+  action: string;
+  projectCode: string | null;
+  details: Record<string, unknown>;
+};
+
 /** A suggestion added by the team (one at a time or by bulk import). */
 export const suggestionSchema = reportSchema.extend({
   theme: z.enum(THEME_KEYS),

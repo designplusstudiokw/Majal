@@ -18,7 +18,8 @@ export default async function Image({ params }: { params: Promise<{ lang: string
   const lang = hasLocale(rawLang) ? rawLang : "ar";
   const t = getDictionary(lang);
   const rtl = lang === "ar";
-  const project = await repo.getProjectByCode(code);
+  const found = await repo.getProjectByCode(code);
+  const project = found?.status === "rejected" ? null : found; // hidden: no details in previews
   const start = rtl ? "flex-end" : "flex-start";
 
   if (!project) {

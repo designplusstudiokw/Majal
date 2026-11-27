@@ -1,5 +1,7 @@
 import type {
+  ModerationEvent,
   Project,
+  ProjectEdit,
   ProjectSource,
   ProjectStatus,
   ProjectSummary,
@@ -45,6 +47,13 @@ export interface Repository {
   /** Publicly visible projects with signature counts, in one query. */
   listPublicProjects(): Promise<ProjectSummary[]>;
   setProjectStatus(code: string, status: ProjectStatus): Promise<Project | null>;
+  /** Moderator edit; only the given fields change. */
+  updateProject(code: string, edit: ProjectEdit): Promise<Project | null>;
+  /** Remove one photo from a project and delete the file. */
+  removePhoto(code: string, photoId: string): Promise<Project | null>;
+  logModeration(event: Omit<ModerationEvent, "at">): Promise<void>;
+  /** Newest first; for one project, or the whole log. */
+  listModeration(projectCode?: string, limit?: number): Promise<ModerationEvent[]>;
   /** Returns null when the photo does not exist. */
   readPhoto(id: string): Promise<NewPhoto | null>;
 

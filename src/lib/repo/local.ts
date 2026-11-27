@@ -2,7 +2,8 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isPublicStatus, type Project, type ScanRun, type Signal } from "@/lib/domain";
+import { rm } from "node:fs/promises";
+import { isPublicStatus, type ModerationEvent, type Project, type ScanRun, type Signal } from "@/lib/domain";
 import type { NewPhoto, NewProject, Repository } from "./types";
 import { safeEqual } from "@/lib/security";
 
@@ -27,6 +28,7 @@ type Db = {
   otps: Record<string, OtpRecord>;
   signals: Signal[];
   scan: { cursor: number; runs: ScanRun[] };
+  moderation: ModerationEvent[];
 };
 
 const DATA_DIR = path.resolve(/*turbopackIgnore: true*/ process.env.DATA_DIR ?? ".data");
@@ -60,10 +62,11 @@ async function load(): Promise<Db> {
       otps: db.otps ?? {},
       signals: db.signals ?? [],
       scan: db.scan ?? { cursor: 0, runs: [] },
+      moderation: db.moderation ?? [],
     };
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
-      return { counter: 0, projects: [], signatures: [], otps: {}, signals: [], scan: { cursor: 0, runs: [] } };
+      return { counter: 0, projects: [], signatures: [], otps: {}, signals: [], scan: { cursor: 0, runs: [] }, moderation: [] };
     }
     throw e;
   }
@@ -162,6 +165,45 @@ export const localRepository: Repository = {
       await save(db);
       return project;
     });
+  },
+
+  async updateProject(code, edit) {
+    return exclusive(async () => {
+      const db = await load();
+      const project = db.projects.find((p) => p.code === code.toUpperCase());
+      if (!project) return null;
+      Object.assign(project, Object.fromEntries(Object.entries(edit).filter(([, v]) => v !== undefined)));
+      await save(db);
+      return project;
+    });
+  },
+
+  async removePhoto(code, photoId) {
+    return exclusive(async () => {
+      const db = await load();
+      const project = db.projects.find((p) => p.code === code.toUpperCase());
+      if (!project || !project.photos.includes(photoId)) return null;
+      project.photos = project.photos.filter((id) => id !== photoId);
+      await save(db);
+      if (PHOTO_ID.test(photoId)) await rm(path.join(UPLOAD_DIR, photoId), { force: true });
+      return project;
+    });
+  },
+
+  async logModeration(event) {
+    await exclusive(async () => {
+      const db = await load();
+      db.moderation.push({ ...event, at: new Date().toISOString() });
+      await save(db);
+    });
+  },
+
+  async listModeration(projectCode, limit = 100) {
+    const db = await load();
+    return db.moderation
+      .filter((e) => !projectCode || e.projectCode === projectCode.toUpperCase())
+      .reverse()
+      .slice(0, limit);
   },
 
   async addSignature(code, phoneHash) {

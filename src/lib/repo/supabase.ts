@@ -1,7 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Project, ProjectSummary, ScanRun, Signal } from "@/lib/domain";
+import type { ModerationEvent, Project, ProjectSummary, ScanRun, Signal } from "@/lib/domain";
 import type { NewPhoto, NewProject, OtpRequestResult, OtpVerifyResult, Repository } from "./types";
 
 /**
@@ -203,6 +203,48 @@ export const supabaseRepository: Repository = {
       await db().from("projects").update({ status }).eq("code", code.toUpperCase()).select(PROJECT_COLUMNS).maybeSingle(),
     ) as ProjectRow | null;
     return row ? toProject(row) : null;
+  },
+
+  async updateProject(code, edit) {
+    const patch = Object.fromEntries(Object.entries(edit).filter(([, v]) => v !== undefined));
+    if (!Object.keys(patch).length) return supabaseRepository.getProjectByCode(code);
+    const row = check(
+      await db().from("projects").update(patch).eq("code", code.toUpperCase()).select(PROJECT_COLUMNS).maybeSingle(),
+    ) as ProjectRow | null;
+    return row ? toProject(row) : null;
+  },
+
+  async removePhoto(code, photoId) {
+    const project = await supabaseRepository.getProjectByCode(code);
+    if (!project || !project.photos.includes(photoId)) return null;
+    const row = check(
+      await db()
+        .from("projects")
+        .update({ photos: project.photos.filter((id) => id !== photoId) })
+        .eq("code", project.code)
+        .select(PROJECT_COLUMNS)
+        .maybeSingle(),
+    ) as ProjectRow | null;
+    if (PHOTO_ID.test(photoId)) await db().storage.from(BUCKET).remove([photoId]);
+    return row ? toProject(row) : null;
+  },
+
+  async logModeration(event) {
+    check(
+      await db().from("moderation_events").insert({
+        actor: event.actor,
+        action: event.action,
+        project_code: event.projectCode,
+        details: event.details,
+      }),
+    );
+  },
+
+  async listModeration(projectCode, limit = 100) {
+    let q = db().from("moderation_events").select("at, actor, action, project_code, details").order("at", { ascending: false }).limit(limit);
+    if (projectCode) q = q.eq("project_code", projectCode.toUpperCase());
+    const rows = check(await q) as { at: string; actor: string; action: string; project_code: string | null; details: Record<string, unknown> }[];
+    return rows.map((r): ModerationEvent => ({ at: r.at, actor: r.actor, action: r.action, projectCode: r.project_code, details: r.details }));
   },
 
   async readPhoto(id) {
